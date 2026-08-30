@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { EntriesProvider } from "./context/EntriesContext";
 import { BudgetProvider } from "./context/BudgetContext";
+import { PlanningProvider } from "./context/PlanningContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import Navbar from "./components/Navbar";
 import BottomNav from "./components/BottomNav";
@@ -16,6 +17,9 @@ const HomePage = lazy(() => import("./pages/HomePage"));
 const EntryFormPage = lazy(() => import("./pages/EntryFormPage"));
 const BudgetPage = lazy(() => import("./pages/BudgetPage"));
 const BudgetFormPage = lazy(() => import("./pages/BudgetFormPage"));
+const PlanningPage = lazy(() => import("./pages/PlanningPage"));
+const PlanningFormPage = lazy(() => import("./pages/PlanningFormPage"));
+const HistoriquePage = lazy(() => import("./pages/HistoriquePage"));
 const ChillPage = lazy(() => import("./pages/ChillPage"));
 
 function LoadingScreen() {
@@ -56,6 +60,7 @@ function AuthGate() {
   return (
     <EntriesProvider>
       <BudgetProvider>
+       <PlanningProvider>
         <div className="relative min-h-[100dvh] w-full text-left text-slate-900 dark:text-slate-100">
           {/* Dégradé de fond peint une seule fois (couche fixe) plutôt que
               repeint à chaque frame pendant le scroll */}
@@ -72,12 +77,17 @@ function AuthGate() {
               <Route path="/budget" element={<BudgetPage />} />
               <Route path="/budget/nouveau" element={<BudgetFormPage />} />
               <Route path="/budget/modifier/:id" element={<BudgetFormPage />} />
+              <Route path="/planning" element={<PlanningPage />} />
+              <Route path="/planning/nouveau" element={<PlanningFormPage />} />
+              <Route path="/planning/modifier/:id" element={<PlanningFormPage />} />
+              <Route path="/historique" element={<HistoriquePage />} />
               <Route path="/chill" element={<ChillPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
           <BottomNav />
         </div>
+       </PlanningProvider>
       </BudgetProvider>
     </EntriesProvider>
   );

@@ -10,6 +10,7 @@ import {
   Sunset,
 } from "lucide-react";
 import { useEntries } from "../context/EntriesContext";
+import { usePlanning } from "../context/PlanningContext";
 import Field from "../components/Field";
 import TypeSelector from "../components/TypeSelector";
 import PauseSelector from "../components/PauseSelector";
@@ -44,12 +45,16 @@ export default function EntryFormPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { entries, upsert, getById } = useEntries();
+  const { remove: removePlannedShift } = usePlanning();
 
   const editing = Boolean(id);
   const duplicateFrom = location.state?.duplicateFrom;
+  // Mission planifiée qu'on « valide » : pré-remplit le formulaire en
+  // gardant sa date, et sera supprimée du planning une fois enregistrée.
+  const fromPlanning = location.state?.fromPlanning;
 
-  // État initial : formulaire vide, pré-rempli en édition, ou pré-rempli
-  // depuis une journée à dupliquer (date remise à aujourd'hui)
+  // État initial : formulaire vide, pré-rempli en édition, depuis une
+  // mission du planning, ou depuis une journée à dupliquer.
   const [form, setForm] = useState(() => {
     if (id) {
       const e = getById(id);
@@ -68,6 +73,18 @@ export default function EntryFormPage() {
           km: String(e.km ?? ""),
         };
       }
+    }
+    if (fromPlanning) {
+      return {
+        ...emptyForm,
+        date: fromPlanning.date,
+        type: fromPlanning.type || "journee",
+        debut: fromPlanning.debut || "",
+        fin: fromPlanning.fin || "",
+        employeur: fromPlanning.employeur || "",
+        cms: fromPlanning.cms || "",
+        secteur: fromPlanning.secteur || "",
+      };
     }
     if (duplicateFrom) {
       return {
@@ -216,6 +233,9 @@ export default function EntryFormPage() {
         secteur: form.secteur,
         km: Number(form.km) || 0,
       });
+      if (fromPlanning?.id) {
+        await removePlannedShift(fromPlanning.id).catch(() => {});
+      }
       navigate("/");
     } catch {
       setSaving(false);
@@ -236,9 +256,11 @@ export default function EntryFormPage() {
         <h1 className="text-xl font-semibold tracking-tight text-teal-900 dark:text-teal-300">
           {editing
             ? "Modifier la journée"
-            : duplicateFrom
-              ? "Dupliquer une journée"
-              : "Nouvelle journée"}
+            : fromPlanning
+              ? "Valider la mission"
+              : duplicateFrom
+                ? "Dupliquer une journée"
+                : "Nouvelle journée"}
         </h1>
       </header>
 

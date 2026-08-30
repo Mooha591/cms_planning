@@ -1,5 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import { CalendarDays, Dices, Plus, Wallet } from "lucide-react";
+import {
+  CalendarClock,
+  CalendarDays,
+  CalendarRange,
+  Dices,
+  Plus,
+  Wallet,
+} from "lucide-react";
 
 const TABS = [
   { to: "/", label: "Accueil", icon: CalendarDays, match: (p) => p === "/" },
@@ -14,6 +21,18 @@ const TABS = [
     label: "Budget",
     icon: Wallet,
     match: (p) => p.startsWith("/budget"),
+  },
+  {
+    to: "/planning",
+    label: "Planning",
+    icon: CalendarClock,
+    match: (p) => p.startsWith("/planning"),
+  },
+  {
+    to: "/historique",
+    label: "Année",
+    icon: CalendarRange,
+    match: (p) => p.startsWith("/historique"),
   },
   {
     to: "/chill",
@@ -38,14 +57,14 @@ export default function BottomNav() {
             <Link
               key={to}
               to={to}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-xs font-medium transition ${
+              className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition ${
                 active
                   ? "text-teal-700 dark:text-teal-400"
                   : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
               }`}
             >
               <Icon size={20} strokeWidth={active ? 2.5 : 2} />
-              {label}
+              <span className="whitespace-nowrap">{label}</span>
             </Link>
           );
         })}

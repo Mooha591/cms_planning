@@ -6,8 +6,9 @@ App **Vite + React** (SPA, routing côté client via react-router). Sortie de bu
 
 Dans **Supabase → SQL Editor**, exécute les schémas s'ils ne le sont pas déjà :
 
-- `supabase/schema.sql` (journées)
+- `supabase/schema.sql` (journées — inclut la colonne `employeur`)
 - `supabase/budget_schema.sql` (budget)
+- `supabase/planning_schema.sql` (onglet Planning)
 - `supabase/p4_schema.sql` (Puissance 4 en ligne)
 
 ## 2. Mettre le projet sous Git
