@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+/* Mode sombre piloté par la classe .dark sur <html> (posée par
+   ThemeContext), pas seulement par la préférence système. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --accent: #0f766e;
+  --accent-bg: rgba(15, 118, 110, 0.1);
+  --accent-border: rgba(15, 118, 110, 0.45);
+  --shadow:
+    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+
+  --sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark {
+  --text: #9ca3af;
+  --text-h: #f1f5f9;
+  --bg: #0f172a;
+  --border: #334155;
+  --accent: #2dd4bf;
+  --accent-bg: rgba(45, 212, 191, 0.12);
+  --accent-border: rgba(45, 212, 191, 0.4);
+  --shadow:
+    rgba(0, 0, 0, 0.5) 0 10px 15px -3px, rgba(0, 0, 0, 0.3) 0 4px 6px -2px;
+
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--sans);
+  color: var(--text);
+  background: var(--bg);
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* Dans la couche "components" : les utilitaires Tailwind (ex. pl-9 pour
+   une icône) restent prioritaires sur ces styles de base. */
+@layer components {
+  .input {
+    display: block;
+    width: 100%;
+    border-radius: 0.65rem;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    padding: 0.5rem 0.75rem;
+    font-size: 15px;
+    color: var(--text-h);
+    box-sizing: border-box;
+    transition: border-color 0.15s ease;
+  }
+
+  .input:hover {
+    border-color: #cbd5e1;
+  }
+
+  .dark .input:hover {
+    border-color: #475569;
+  }
+
+  .dark .input::placeholder {
+    color: #64748b;
+  }
+
+  .input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+    border-color: var(--accent);
+  }
+}
+
+/* Légère entrée en fondu + glissement pour les journées de la liste */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fade-in 0.25s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in {
+    animation: none;
+  }
+}
