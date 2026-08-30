@@ -27,18 +27,25 @@ export function toHours(min) {
   return Math.round((min / 60) * 100) / 100;
 }
 
+// Une saisie a-t-elle deux créneaux ? "coupé" (matin / soir) toujours,
+// "journée" (matin / après-midi) dès que le second créneau est renseigné.
+export function isSplitEntry(f) {
+  return f.type === "coupe" || (f.type === "journee_complete" && !!f.debut2 && !!f.fin2);
+}
+
 // Heures travaillées d'une saisie selon son type
-//   coupé   : (matin fin - début) + (soir fin - début)
-//   autres  : (fin - début) - pause du midi
+//   deux créneaux : (fin1 - début1) + (fin2 - début2)
+//   sinon         : (fin - début) - pause du midi
 export function computeHours(f) {
-  if (f.type === "coupe") {
+  if (isSplitEntry(f)) {
     return toHours(durMin(f.debut, f.fin) + durMin(f.debut2, f.fin2));
   }
   const m = durMin(f.debut, f.fin) - (Number(f.pause) || 0);
   return toHours(Math.max(0, m));
 }
 
-// Durée de la coupure du midi d'un coupé (entre fin matin et reprise soir)
+// Durée de l'écart entre les deux créneaux (coupure d'un coupé, pause
+// déjeuner d'une journée matin/après-midi)
 export function coupeGap(f) {
   if (!f.fin || !f.debut2) return 0;
   return durMin(f.fin, f.debut2);

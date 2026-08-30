@@ -7,6 +7,16 @@ export const PAUSE_CHIPS = [0, 30, 45, 60, 90];
 // Secteurs auxquels une journée/mission peut être rattachée
 export const SECTEURS = ["La Côte", "APREMADOL", "APROMAD", "ABSMAD", "Autre"];
 
+// Employeurs / agences pour lesquels une journée peut être effectuée
+export const EMPLOYEURS = [
+  "FICOBA",
+  "One Placement",
+  "OKJob Genève",
+  "OKJob Lausanne",
+  "Assisteo",
+  "Medicalis Genève",
+];
+
 // Types de service et leurs couleurs (classes Tailwind statiques)
 export const TYPES = [
   {
@@ -26,6 +36,15 @@ export const TYPES = [
       "bg-white text-teal-800 border-teal-200 hover:border-teal-500 dark:bg-slate-900 dark:text-teal-400 dark:border-teal-900 dark:hover:border-teal-600",
     badge: "bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300",
     dot: "bg-teal-700",
+  },
+  {
+    id: "soir",
+    label: "Soir",
+    seg: "bg-indigo-600 text-white border-indigo-600",
+    segIdle:
+      "bg-white text-indigo-700 border-indigo-200 hover:border-indigo-400 dark:bg-slate-900 dark:text-indigo-400 dark:border-indigo-900 dark:hover:border-indigo-600",
+    badge: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300",
+    dot: "bg-indigo-600",
   },
   {
     id: "journee_complete",

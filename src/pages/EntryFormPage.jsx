@@ -17,11 +17,12 @@ import TimeInput from "../components/TimeInput";
 import {
   computeHours,
   coupeGap,
+  durMin,
   formatDuree,
   formatHours,
   todayISO,
 } from "../lib/time";
-import { SECTEURS } from "../lib/constants";
+import { EMPLOYEURS, SECTEURS } from "../lib/constants";
 
 const emptyForm = {
   date: todayISO(),
@@ -31,6 +32,7 @@ const emptyForm = {
   debut2: "",
   fin2: "",
   pause: "",
+  employeur: "",
   cms: "",
   secteur: "",
   km: "",
@@ -60,6 +62,7 @@ export default function EntryFormPage() {
           debut2: e.debut2 || "",
           fin2: e.fin2 || "",
           pause: e.type !== "coupe" && e.pause ? String(e.pause) : "",
+          employeur: e.employeur || "",
           cms: e.cms || "",
           secteur: e.secteur || "",
           km: String(e.km ?? ""),
@@ -78,6 +81,7 @@ export default function EntryFormPage() {
           duplicateFrom.type !== "coupe" && duplicateFrom.pause
             ? String(duplicateFrom.pause)
             : "",
+        employeur: duplicateFrom.employeur || "",
         cms: duplicateFrom.cms || "",
         secteur: duplicateFrom.secteur || "",
         km: String(duplicateFrom.km ?? ""),
@@ -87,10 +91,39 @@ export default function EntryFormPage() {
   });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  // "Autre…" : l'employeur n'est pas dans la liste, on le saisit à la main
+  const [autreEmployeur, setAutreEmployeur] = useState(
+    () => !!form.employeur && !EMPLOYEURS.includes(form.employeur),
+  );
 
   const isCoupe = form.type === "coupe";
+  const isJournee = form.type === "journee_complete";
+  const isSplit = isCoupe || isJournee; // deux créneaux à l'écran
   const gap = coupeGap(form);
   const previewHours = computeHours(form);
+  const part1 = durMin(form.debut, form.fin);
+  const part2 = durMin(form.debut2, form.fin2);
+
+  // Libellés des deux créneaux selon le type
+  const split = isCoupe
+    ? {
+        first: "Premier service",
+        second: "Reprise (après-midi ou soir)",
+        short1: "1er service",
+        short2: "reprise",
+        gapZero: "entre les deux services",
+        box: "border-violet-100 bg-violet-50/50 dark:border-violet-900/50 dark:bg-violet-950/20",
+        label: "text-violet-700 dark:text-violet-400",
+      }
+    : {
+        first: "Matin",
+        second: "Après-midi",
+        short1: "matin",
+        short2: "après-midi",
+        gapZero: "aucune",
+        box: "border-sky-100 bg-sky-50/50 dark:border-sky-900/50 dark:bg-sky-950/20",
+        label: "text-sky-700 dark:text-sky-400",
+      };
 
   // Liste des CMS déjà saisis pour l'autocomplétion
   const cmsSuggestions = useMemo(
@@ -98,17 +131,45 @@ export default function EntryFormPage() {
     [entries],
   );
 
+  // Récap des heures déjà faites pour l'employeur choisi : le mois de la
+  // journée en cours d'un côté, le total de l'autre. La journée éditée
+  // est exclue pour ne pas la compter deux fois pendant la saisie.
+  const employeurStats = useMemo(() => {
+    if (!form.employeur) return null;
+    const monthKey = (form.date || "").slice(0, 7);
+    let moisH = 0;
+    let moisJ = 0;
+    let totalH = 0;
+    for (const e of entries) {
+      if (e.id === id || e.employeur !== form.employeur) continue;
+      const h = Number(e.heures) || 0;
+      totalH += h;
+      if (e.date.startsWith(monthKey)) {
+        moisH += h;
+        moisJ += 1;
+      }
+    }
+    return { moisH, moisJ, totalH };
+  }, [entries, form.employeur, form.date, id]);
+
   function setField(k, v) {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
-  // En passant en "Coupé", on pré-remplit la reprise du soir à 16h
-  // (heure de reprise la plus courante) si elle n'est pas déjà saisie.
+  // En changeant de type, on pré-remplit une heure plausible si le champ
+  // est vide : reprise à 16h pour un coupé, 13h30 pour une journée
+  // matin/après-midi, début à 18h pour un service du soir.
   function setType(v) {
     setForm((f) => ({
       ...f,
       type: v,
-      debut2: v === "coupe" && !f.debut2 ? "16:00" : f.debut2,
+      debut: !f.debut && v === "soir" ? "18:00" : f.debut,
+      debut2:
+        !f.debut2 && v === "coupe"
+          ? "16:00"
+          : !f.debut2 && v === "journee_complete"
+            ? "13:30"
+            : f.debut2,
     }));
   }
 
@@ -121,7 +182,13 @@ export default function EntryFormPage() {
       if (!form.debut2 || !form.fin2)
         return setError("Renseigne les horaires de la reprise (début et fin).");
     } else if (!form.debut || !form.fin) {
-      return setError("Indique l'heure de début et l'heure de fin.");
+      return setError(
+        isJournee
+          ? "Indique l'heure de début et de fin du matin."
+          : "Indique l'heure de début et l'heure de fin.",
+      );
+    } else if (isJournee && Boolean(form.debut2) !== Boolean(form.fin2)) {
+      return setError("Complète l'heure de début ET de fin de l'après-midi.");
     }
 
     const heures = computeHours(form);
@@ -137,9 +204,13 @@ export default function EntryFormPage() {
         type: form.type,
         debut: form.debut,
         fin: form.fin,
-        debut2: isCoupe ? form.debut2 : "",
-        fin2: isCoupe ? form.fin2 : "",
-        pause: isCoupe ? coupeGap(form) : Number(form.pause) || 0,
+        debut2: isSplit ? form.debut2 : "",
+        fin2: isSplit ? form.fin2 : "",
+        pause:
+          isCoupe || (isJournee && form.debut2 && form.fin2)
+            ? coupeGap(form)
+            : Number(form.pause) || 0,
+        employeur: form.employeur.trim(),
         heures,
         cms: form.cms.trim(),
         secteur: form.secteur,
@@ -190,12 +261,14 @@ export default function EntryFormPage() {
         </div>
 
         {/* Horaires */}
-        {isCoupe ? (
+        {isSplit ? (
           <div className="space-y-3">
-            {/* Matin */}
-            <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-3 dark:border-violet-900/50 dark:bg-violet-950/20">
-              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-400">
-                <Sunrise size={14} /> Premier service
+            {/* Créneau 1 : matin (ou premier service) */}
+            <div className={`rounded-xl border p-3 ${split.box}`}>
+              <div
+                className={`mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide ${split.label}`}
+              >
+                <Sunrise size={14} /> {split.first}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Début">
@@ -213,17 +286,24 @@ export default function EntryFormPage() {
               </div>
             </div>
 
-            {/* Coupure calculée */}
+            {/* Écart calculé (coupure du coupé / pause déjeuner de la journée) */}
             <div className="flex items-center justify-center gap-2 text-xs text-slate-400 dark:text-slate-500">
               <Coffee size={14} />
-              Coupure{" "}
-              {gap > 0 ? `de ${formatDuree(gap)}` : "entre les deux services"}
+              {isCoupe ? "Coupure " : "Pause déjeuner "}
+              {gap > 0 ? `de ${formatDuree(gap)}` : split.gapZero}
             </div>
 
-            {/* Soir */}
-            <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-3 dark:border-violet-900/50 dark:bg-violet-950/20">
-              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-400">
-                <Sunset size={14} /> Reprise (après-midi ou soir)
+            {/* Créneau 2 : après-midi (ou reprise du soir) */}
+            <div className={`rounded-xl border p-3 ${split.box}`}>
+              <div
+                className={`mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide ${split.label}`}
+              >
+                <Sunset size={14} /> {split.second}
+                {isJournee && (
+                  <span className="font-normal normal-case tracking-normal text-slate-400 dark:text-slate-500">
+                    · facultatif
+                  </span>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Début">
@@ -252,7 +332,7 @@ export default function EntryFormPage() {
             <Field label="Heure de fin">
               <TimeInput value={form.fin} onChange={(v) => setField("fin", v)} />
             </Field>
-            <Field label="Pause du midi" full>
+            <Field label="Pause" full>
               <PauseSelector
                 value={form.pause}
                 onChange={(v) => setField("pause", v)}
@@ -260,6 +340,58 @@ export default function EntryFormPage() {
             </Field>
           </div>
         )}
+
+        {/* Employeur / agence */}
+        <div className="mt-3">
+          <Field label="Employeur">
+            <select
+              value={autreEmployeur ? "__autre" : form.employeur}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "__autre") {
+                  setAutreEmployeur(true);
+                  setField("employeur", "");
+                } else {
+                  setAutreEmployeur(false);
+                  setField("employeur", v);
+                }
+              }}
+              className="input"
+            >
+              <option value="">Aucun / non précisé</option>
+              {EMPLOYEURS.map((em) => (
+                <option key={em} value={em}>
+                  {em}
+                </option>
+              ))}
+              <option value="__autre">Autre…</option>
+            </select>
+            {autreEmployeur && (
+              <input
+                type="text"
+                autoFocus
+                placeholder="Nom de l'employeur"
+                value={form.employeur}
+                maxLength={40}
+                onChange={(e) => setField("employeur", e.target.value)}
+                className="input mt-2"
+              />
+            )}
+          </Field>
+          {employeurStats && (
+            <p className="mt-1.5 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+              Chez <span className="font-medium text-slate-700 dark:text-slate-200">{form.employeur}</span> :{" "}
+              <span className="font-semibold tabular-nums text-teal-700 dark:text-teal-400">
+                {formatHours(employeurStats.moisH)}
+              </span>{" "}
+              ce mois-ci
+              {employeurStats.moisJ > 0 && ` (${employeurStats.moisJ} j)`} · total{" "}
+              <span className="font-semibold tabular-nums text-teal-700 dark:text-teal-400">
+                {formatHours(employeurStats.totalH)}
+              </span>
+            </p>
+          )}
+        </div>
 
         {/* CMS + secteur + kilomètres */}
         <div className="mt-3 grid grid-cols-2 gap-3">
@@ -308,13 +440,20 @@ export default function EntryFormPage() {
         </div>
 
         {/* Aperçu heures */}
-        <div className="mt-4 flex items-center justify-between rounded-xl bg-teal-50 px-4 py-3 dark:bg-teal-950/40">
-          <span className="flex items-center gap-2 text-sm font-medium text-teal-800 dark:text-teal-300">
-            <Clock size={16} /> Heures travaillées
-          </span>
-          <span className="text-lg font-semibold tabular-nums text-teal-900 dark:text-teal-200">
-            {previewHours > 0 ? formatHours(previewHours) : "—"}
-          </span>
+        <div className="mt-4 rounded-xl bg-teal-50 px-4 py-3 dark:bg-teal-950/40">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-2 text-sm font-medium text-teal-800 dark:text-teal-300">
+              <Clock size={16} /> Heures travaillées
+            </span>
+            <span className="text-lg font-semibold tabular-nums text-teal-900 dark:text-teal-200">
+              {previewHours > 0 ? formatHours(previewHours) : "—"}
+            </span>
+          </div>
+          {isSplit && part1 > 0 && part2 > 0 && (
+            <p className="mt-1 text-right text-xs tabular-nums text-teal-700/80 dark:text-teal-300/70">
+              {split.short1} {formatDuree(part1)} · {split.short2} {formatDuree(part2)}
+            </p>
+          )}
         </div>
 
         {error && (

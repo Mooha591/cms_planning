@@ -13,6 +13,7 @@ import { useEntries } from "../context/EntriesContext";
 import MonthSummary from "../components/MonthSummary";
 import MonthInsight from "../components/MonthInsight";
 import SecteurBreakdown from "../components/SecteurBreakdown";
+import EmployeurBreakdown from "../components/EmployeurBreakdown";
 import MonthlyTrends from "../components/MonthlyTrends";
 import SalaryEstimate from "../components/SalaryEstimate";
 import EntryCard from "../components/EntryCard";
@@ -239,6 +240,7 @@ export default function HomePage() {
             totals={totals}
           />
           <SecteurBreakdown entries={monthEntries} />
+          <EmployeurBreakdown entries={monthEntries} />
           <MonthlyTrends entries={entries} />
           <SalaryEstimate heures={totals.heures} />
         </section>

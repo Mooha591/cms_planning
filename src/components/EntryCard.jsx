@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  Briefcase,
   Building2,
   Car,
   Check,
@@ -13,11 +14,15 @@ import {
   Trash2,
 } from "lucide-react";
 import TypeBadge from "./TypeBadge";
-import { formatDateLong, formatDuree, formatHours } from "../lib/time";
+import { durMin, formatDateLong, formatDuree, formatHours } from "../lib/time";
 
 // Carte d'une journée dans la liste
 export default function EntryCard({ entry, onEdit, onDelete, onDuplicate }) {
-  const coupe = entry.type === "coupe";
+  // Deux créneaux à afficher dès qu'un second est renseigné : coupé
+  // (matin/soir) comme journée (matin/après-midi).
+  const split = Boolean(entry.debut2 && entry.fin2);
+  const splitLabels =
+    entry.type === "coupe" ? ["1er", "reprise"] : ["matin", "aprem"];
 
   // Suppression à double-tap : le premier clic arme la confirmation,
   // le second (dans les 3s) supprime réellement.
@@ -54,7 +59,7 @@ export default function EntryCard({ entry, onEdit, onDelete, onDuplicate }) {
 
           {/* Détails horaires / km / CMS */}
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600 dark:text-slate-400">
-            {coupe ? (
+            {split ? (
               <>
                 <span className="inline-flex items-center gap-1.5 tabular-nums">
                   <Sunrise size={14} className="text-slate-400 dark:text-slate-500" />
@@ -63,6 +68,10 @@ export default function EntryCard({ entry, onEdit, onDelete, onDuplicate }) {
                 <span className="inline-flex items-center gap-1.5 tabular-nums">
                   <Sunset size={14} className="text-slate-400 dark:text-slate-500" />
                   {entry.debut2} – {entry.fin2}
+                </span>
+                <span className="inline-flex items-center gap-1.5 tabular-nums text-slate-400 dark:text-slate-500">
+                  {splitLabels[0]} {formatDuree(durMin(entry.debut, entry.fin))} · {splitLabels[1]}{" "}
+                  {formatDuree(durMin(entry.debut2, entry.fin2))}
                 </span>
               </>
             ) : (
@@ -91,6 +100,12 @@ export default function EntryCard({ entry, onEdit, onDelete, onDuplicate }) {
               <Building2 size={14} className="text-slate-400 dark:text-slate-500" />
               {entry.secteur || "Non défini"}
             </span>
+            {entry.employeur && (
+              <span className="inline-flex items-center gap-1.5">
+                <Briefcase size={14} className="text-slate-400 dark:text-slate-500" />
+                {entry.employeur}
+              </span>
+            )}
           </div>
         </div>
 

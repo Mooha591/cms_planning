@@ -32,6 +32,7 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
       typeMeta(e.type).label,
       formatPlage(e),
       e.secteur || "Non défini",
+      e.employeur || "—",
       e.cms || "—",
       `${(Number(e.km) || 0).toLocaleString("fr-FR")} km`,
       formatHours(e.heures),
@@ -39,10 +40,11 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
 
   autoTable(doc, {
     startY: 34,
-    head: [["Date", "Type", "Horaires", "Secteur", "CMS", "Km", "Heures"]],
+    head: [["Date", "Type", "Horaires", "Secteur", "Employeur", "CMS", "Km", "Heures"]],
     body: rows,
     foot: [
       [
+        "",
         "",
         "",
         "",
@@ -52,7 +54,7 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
         formatHours(totals.heures),
       ],
     ],
-    styles: { fontSize: 9, cellPadding: 3 },
+    styles: { fontSize: 8, cellPadding: 2.5 },
     headStyles: { fillColor: TEAL, textColor: 255 },
     footStyles: {
       fillColor: [240, 253, 250],
@@ -75,9 +77,10 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
   doc.save(`kyzenday-releve-${monthKey}.pdf`);
 }
 
-// "08:00 – 12:00" ou, pour un coupé, les deux services l'un sous l'autre
+// "08:00 – 12:00" ou, quand il y a deux créneaux (coupé, ou journée
+// matin/après-midi), les deux plages séparées par un slash
 function formatPlage(e) {
-  if (e.type === "coupe") {
+  if (e.debut2 && e.fin2) {
     return `${e.debut}–${e.fin} / ${e.debut2}–${e.fin2}`;
   }
   return `${e.debut}–${e.fin}`;
