@@ -99,7 +99,7 @@ export default function PlanningPage() {
                     key={s.id}
                     shift={s}
                     next={i === 0}
-                    onValidate={() => valider(s)}
+                    onValidate={s.date <= today ? () => valider(s) : null}
                     onEdit={() => navigate(`/planning/modifier/${s.id}`)}
                     onDelete={() => remove(s.id)}
                   />
@@ -212,12 +212,18 @@ function ShiftCard({ shift, next, overdue, onValidate, onEdit, onDelete }) {
         </div>
       </div>
 
-      <button
-        onClick={onValidate}
-        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-teal-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
-      >
-        <Check size={15} /> Valider → journée
-      </button>
+      {onValidate ? (
+        <button
+          onClick={onValidate}
+          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-teal-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
+        >
+          <Check size={15} /> Valider → journée
+        </button>
+      ) : (
+        <p className="mt-3 text-center text-xs text-slate-400 dark:text-slate-500">
+          À valider une fois la mission faite
+        </p>
+      )}
     </li>
   );
 }

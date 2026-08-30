@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Download,
   FileText,
@@ -29,6 +29,7 @@ const MIGRATION_DISMISSED_KEY = "kyzenday:migration-dismissed";
 export default function HomePage() {
   const { entries, loading, remove, importEntries } = useEntries();
   const navigate = useNavigate();
+  const location = useLocation();
   const fileInputRef = useRef(null);
   const [backupMessage, setBackupMessage] = useState(null);
 
@@ -77,7 +78,10 @@ export default function HomePage() {
   }
 
   const [viewMonth, setViewMonth] = useState(() => {
-    const d = new Date();
+    // Après l'ajout d'une journée, on ouvre l'Accueil sur le mois de
+    // cette journée (transmis via l'état de navigation).
+    const focus = location.state?.focusDate;
+    const d = focus ? new Date(`${focus}T00:00:00`) : new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
 
