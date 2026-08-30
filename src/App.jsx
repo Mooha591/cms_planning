@@ -56,7 +56,13 @@ function AuthGate() {
   return (
     <EntriesProvider>
       <BudgetProvider>
-        <div className="min-h-screen w-full bg-gradient-to-b from-teal-50/60 to-slate-50 text-left text-slate-900 dark:from-slate-950 dark:to-slate-900 dark:text-slate-100">
+        <div className="relative min-h-[100dvh] w-full text-left text-slate-900 dark:text-slate-100">
+          {/* Dégradé de fond peint une seule fois (couche fixe) plutôt que
+              repeint à chaque frame pendant le scroll */}
+          <div
+            aria-hidden
+            className="pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b from-teal-50/60 to-slate-50 dark:from-slate-950 dark:to-slate-900"
+          />
           <Navbar />
           <Suspense fallback={<LoadingScreen />}>
             <Routes>
