@@ -32,6 +32,7 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
       typeMeta(e.type).label,
       formatPlage(e),
       e.secteur || "Non défini",
+      e.poste || "—",
       e.employeur || "—",
       e.cms || "—",
       `${(Number(e.km) || 0).toLocaleString("fr-FR")} km`,
@@ -40,10 +41,11 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
 
   autoTable(doc, {
     startY: 34,
-    head: [["Date", "Type", "Horaires", "Secteur", "Employeur", "CMS", "Km", "Heures"]],
+    head: [["Date", "Type", "Horaires", "Secteur", "Poste", "Employeur", "CMS", "Km", "Heures"]],
     body: rows,
     foot: [
       [
+        "",
         "",
         "",
         "",

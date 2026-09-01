@@ -145,6 +145,11 @@ function ShiftCard({ shift, next, overdue, onValidate, onEdit, onDelete }) {
               {formatDateLong(shift.date)}
             </span>
             <TypeBadge type={shift.type} />
+            {shift.poste && (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                {shift.poste}
+              </span>
+            )}
             {next && (
               <span className="rounded-full bg-teal-100 px-1.5 py-0.5 text-[11px] font-semibold text-teal-700 dark:bg-teal-900/50 dark:text-teal-300">
                 Prochaine

@@ -52,6 +52,11 @@ export default function EntryCard({ entry, onEdit, onDelete, onDuplicate }) {
               {formatDateLong(entry.date)}
             </span>
             <TypeBadge type={entry.type} />
+            {entry.poste && (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                {entry.poste}
+              </span>
+            )}
             <span className="ml-auto text-sm font-semibold tabular-nums text-teal-800 dark:text-teal-400">
               {formatHours(entry.heures)}
             </span>

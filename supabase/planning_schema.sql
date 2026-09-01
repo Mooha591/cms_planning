@@ -10,12 +10,16 @@ create table if not exists public.planning (
   fin text,
   employeur text,
   secteur text,
+  poste text,
   cms text,
   lieu text,
   note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Ajout de la colonne poste sur une base déjà créée
+alter table public.planning add column if not exists poste text;
 
 create index if not exists planning_user_id_date_idx
   on public.planning (user_id, date);

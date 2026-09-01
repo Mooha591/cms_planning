@@ -14,14 +14,16 @@ create table if not exists public.entries (
   heures numeric not null default 0,
   cms text,
   secteur text,
+  poste text,
   employeur text,
   km numeric not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
--- Ajout de la colonne employeur sur une base déjà créée
+-- Ajout des colonnes sur une base déjà créée
 alter table public.entries add column if not exists employeur text;
+alter table public.entries add column if not exists poste text;
 
 create index if not exists entries_user_id_date_idx
   on public.entries (user_id, date desc);

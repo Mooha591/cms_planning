@@ -15,6 +15,7 @@ export function exportEntriesCSV(entries, totals, monthKey) {
     "CMS",
     "Secteur",
     "Employeur",
+    "Poste",
     "Kilomètres",
     "Heures",
   ];
@@ -33,6 +34,7 @@ export function exportEntriesCSV(entries, totals, monthKey) {
         e.cms || "",
         e.secteur || "Non défini",
         e.employeur || "",
+        e.poste || "",
         String(e.km ?? 0).replace(".", ","),
         String(e.heures ?? 0).replace(".", ","),
       ].join(";")
@@ -40,7 +42,7 @@ export function exportEntriesCSV(entries, totals, monthKey) {
 
   rows.push("");
   rows.push(
-    `TOTAL;;;;;;;;;;${String(totals.km).replace(".", ",")};${String(
+    `TOTAL;;;;;;;;;;;${String(totals.km).replace(".", ",")};${String(
       totals.heures
     ).replace(".", ",")}`
   );

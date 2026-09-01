@@ -7,13 +7,14 @@ import Field from "../components/Field";
 import TypeSelector from "../components/TypeSelector";
 import TimeInput from "../components/TimeInput";
 import { durMin, formatDuree, todayISO } from "../lib/time";
-import { EMPLOYEURS, SECTEURS } from "../lib/constants";
+import { EMPLOYEURS, POSTES, SECTEURS } from "../lib/constants";
 
 const emptyForm = {
   date: todayISO(),
   type: "journee",
   debut: "",
   fin: "",
+  poste: "",
   employeur: "",
   secteur: "",
   cms: "",
@@ -38,6 +39,7 @@ export default function PlanningFormPage() {
           type: s.type || "journee",
           debut: s.debut || "",
           fin: s.fin || "",
+          poste: s.poste || "",
           employeur: s.employeur || "",
           secteur: s.secteur || "",
           cms: s.cms || "",
@@ -79,6 +81,7 @@ export default function PlanningFormPage() {
         type: form.type,
         debut: form.debut,
         fin: form.fin,
+        poste: form.poste,
         employeur: form.employeur.trim(),
         secteur: form.secteur,
         cms: form.cms.trim(),
@@ -136,6 +139,23 @@ export default function PlanningFormPage() {
             <Clock size={13} /> Durée prévue : {formatDuree(duree)}
           </p>
         )}
+
+        <div className="mt-3">
+          <Field label="Poste">
+            <select
+              value={form.poste}
+              onChange={(e) => setField("poste", e.target.value)}
+              className="input"
+            >
+              <option value="">Non précisé</option>
+              {POSTES.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
 
         <div className="mt-3">
           <Field label="Employeur">

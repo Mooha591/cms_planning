@@ -23,7 +23,7 @@ import {
   formatHours,
   todayISO,
 } from "../lib/time";
-import { EMPLOYEURS, SECTEURS } from "../lib/constants";
+import { EMPLOYEURS, POSTES, SECTEURS } from "../lib/constants";
 
 const emptyForm = {
   date: todayISO(),
@@ -33,6 +33,7 @@ const emptyForm = {
   debut2: "",
   fin2: "",
   pause: "",
+  poste: "",
   employeur: "",
   cms: "",
   secteur: "",
@@ -67,6 +68,7 @@ export default function EntryFormPage() {
           debut2: e.debut2 || "",
           fin2: e.fin2 || "",
           pause: e.type !== "coupe" && e.pause ? String(e.pause) : "",
+          poste: e.poste || "",
           employeur: e.employeur || "",
           cms: e.cms || "",
           secteur: e.secteur || "",
@@ -81,6 +83,7 @@ export default function EntryFormPage() {
         type: fromPlanning.type || "journee",
         debut: fromPlanning.debut || "",
         fin: fromPlanning.fin || "",
+        poste: fromPlanning.poste || "",
         employeur: fromPlanning.employeur || "",
         cms: fromPlanning.cms || "",
         secteur: fromPlanning.secteur || "",
@@ -261,6 +264,7 @@ export default function EntryFormPage() {
           isCoupe || (isJournee && form.debut2 && form.fin2)
             ? coupeGap(form)
             : Number(form.pause) || 0,
+        poste: form.poste,
         employeur: form.employeur.trim(),
         heures,
         cms: form.cms.trim(),
@@ -398,6 +402,24 @@ export default function EntryFormPage() {
             </Field>
           </div>
         )}
+
+        {/* Poste / structure */}
+        <div className="mt-3">
+          <Field label="Poste">
+            <select
+              value={form.poste}
+              onChange={(e) => setField("poste", e.target.value)}
+              className="input"
+            >
+              <option value="">Non précisé</option>
+              {POSTES.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
 
         {/* Employeur / agence */}
         <div className="mt-3">

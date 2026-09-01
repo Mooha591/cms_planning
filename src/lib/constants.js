@@ -7,6 +7,9 @@ export const PAUSE_CHIPS = [0, 30, 45, 60, 90];
 // Secteurs auxquels une journée/mission peut être rattachée
 export const SECTEURS = ["La Côte", "APREMADOL", "APROMAD", "ABSMAD", "Autre"];
 
+// Type de poste / structure où la journée est effectuée
+export const POSTES = ["CMS", "Garde 1:1", "EMS", "EPSM", "Autre"];
+
 // Employeurs / agences pour lesquels une journée peut être effectuée
 export const EMPLOYEURS = [
   "FICOBA",
