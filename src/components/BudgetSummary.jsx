@@ -1,9 +1,9 @@
 import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import Stat from "./Stat";
 
-const eurFormatter = new Intl.NumberFormat("fr-FR", {
+const chfFormatter = new Intl.NumberFormat("fr-CH", {
   style: "currency",
-  currency: "EUR",
+  currency: "CHF",
   maximumFractionDigits: 0,
 });
 
@@ -34,17 +34,17 @@ export default function BudgetSummary({ monthLabel, totals, onPrev, onNext }) {
       <div className="grid grid-cols-3 divide-x divide-white/10 border-t border-white/10">
         <Stat
           icon={<TrendingUp size={16} />}
-          value={eurFormatter.format(totals.revenus)}
+          value={chfFormatter.format(totals.revenus)}
           label="Revenus"
         />
         <Stat
           icon={<TrendingDown size={16} />}
-          value={eurFormatter.format(totals.depenses)}
+          value={chfFormatter.format(totals.depenses)}
           label="Dépenses"
         />
         <Stat
           icon={<Wallet size={16} />}
-          value={eurFormatter.format(totals.solde)}
+          value={chfFormatter.format(totals.solde)}
           label="Solde"
         />
       </div>

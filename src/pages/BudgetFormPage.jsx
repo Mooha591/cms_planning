@@ -138,7 +138,7 @@ export default function BudgetFormPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Montant (€)">
+            <Field label="Montant (CHF)">
               <input
                 type="number"
                 inputMode="decimal"

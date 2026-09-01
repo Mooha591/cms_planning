@@ -3,9 +3,9 @@ import { Check, Pencil, Tag, Trash2 } from "lucide-react";
 import { budgetTypeMeta } from "../lib/budgetConstants";
 import { formatDateLong } from "../lib/time";
 
-const eurFormatter = new Intl.NumberFormat("fr-FR", {
+const chfFormatter = new Intl.NumberFormat("fr-CH", {
   style: "currency",
-  currency: "EUR",
+  currency: "CHF",
 });
 
 // Carte d'une transaction dans la liste du budget
@@ -40,7 +40,7 @@ export default function TransactionCard({ transaction, onEdit, onDelete }) {
             <span
               className={`ml-auto shrink-0 text-sm font-semibold tabular-nums ${meta.amountClass}`}
             >
-              {meta.sign} {eurFormatter.format(Number(transaction.montant) || 0)}
+              {meta.sign} {chfFormatter.format(Number(transaction.montant) || 0)}
             </span>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
