@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
+  ChevronRight,
+  Coins,
   Download,
   FileText,
   NotebookPen,
@@ -247,6 +249,25 @@ export default function HomePage() {
           <SecteurBreakdown entries={monthEntries} />
           <EmployeurBreakdown entries={monthEntries} />
           <MonthlyTrends entries={entries} />
+
+          <button
+            onClick={() => navigate("/paie")}
+            className="mb-6 flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-teal-300 hover:shadow dark:border-slate-800 dark:bg-slate-900 dark:hover:border-teal-700"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-800 text-white dark:bg-teal-700">
+              <Coins size={18} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold text-slate-800 dark:text-slate-100">
+                Paie par agence
+              </span>
+              <span className="block text-sm text-slate-500 dark:text-slate-400">
+                Ce que chaque agence te doit · écarts de paie
+              </span>
+            </span>
+            <ChevronRight size={18} className="shrink-0 text-slate-300 dark:text-slate-600" />
+          </button>
+
           <SalaryEstimate heures={totals.heures} />
           <KmEstimate km={totals.km} />
         </section>

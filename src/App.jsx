@@ -20,6 +20,7 @@ const BudgetFormPage = lazy(() => import("./pages/BudgetFormPage"));
 const PlanningPage = lazy(() => import("./pages/PlanningPage"));
 const PlanningFormPage = lazy(() => import("./pages/PlanningFormPage"));
 const HistoriquePage = lazy(() => import("./pages/HistoriquePage"));
+const PaiePage = lazy(() => import("./pages/PaiePage"));
 const ChillPage = lazy(() => import("./pages/ChillPage"));
 
 function LoadingScreen() {
@@ -81,6 +82,7 @@ function AuthGate() {
               <Route path="/planning/nouveau" element={<PlanningFormPage />} />
               <Route path="/planning/modifier/:id" element={<PlanningFormPage />} />
               <Route path="/historique" element={<HistoriquePage />} />
+              <Route path="/paie" element={<PaiePage />} />
               <Route path="/chill" element={<ChillPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
