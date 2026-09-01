@@ -9,6 +9,7 @@ Dans **Supabase → SQL Editor**, exécute les schémas s'ils ne le sont pas dé
 - `supabase/schema.sql` (journées — inclut la colonne `employeur`)
 - `supabase/budget_schema.sql` (budget)
 - `supabase/planning_schema.sql` (onglet Planning)
+- `supabase/agency_logos_schema.sql` (logos des agences)
 - `supabase/p4_schema.sql` (Puissance 4 en ligne)
 
 ## 2. Mettre le projet sous Git

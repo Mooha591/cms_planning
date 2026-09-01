@@ -3,6 +3,7 @@ import { Briefcase } from "lucide-react";
 import { formatHours } from "../lib/time";
 import { useTheme } from "../context/ThemeContext";
 import { CHART_COLOR } from "../lib/chartColor";
+import AgencyLogo from "./AgencyLogo";
 
 // Répartition des heures du mois par employeur / agence, en barres
 // horizontales — même principe que <SecteurBreakdown /> (une seule teinte,
@@ -53,9 +54,12 @@ export default function EmployeurBreakdown({ entries }) {
                 }, ${t.km.toLocaleString("fr-FR")} km`}
                 className="block w-full rounded text-left"
               >
-                <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
-                  <span className="min-w-0 truncate font-medium text-slate-700 dark:text-slate-200">
-                    {employeur}
+                <div className="mb-1 flex items-center justify-between gap-2 text-sm">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <AgencyLogo employeur={employeur} size={16} />
+                    <span className="min-w-0 truncate font-medium text-slate-700 dark:text-slate-200">
+                      {employeur}
+                    </span>
                   </span>
                   <span className="shrink-0 font-semibold tabular-nums text-slate-700 dark:text-slate-200">
                     {formatHours(t.heures)}

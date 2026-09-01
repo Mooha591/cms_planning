@@ -11,10 +11,13 @@ import {
 } from "lucide-react";
 import { useEntries } from "../context/EntriesContext";
 import { usePlanning } from "../context/PlanningContext";
+import { useAgencyLogos } from "../context/LogosContext";
 import Field from "../components/Field";
 import TypeSelector from "../components/TypeSelector";
 import PauseSelector from "../components/PauseSelector";
 import TimeInput from "../components/TimeInput";
+import AgencyLogo from "../components/AgencyLogo";
+import { fileToLogoDataUrl } from "../lib/image";
 import {
   computeHours,
   coupeGap,
@@ -47,6 +50,21 @@ export default function EntryFormPage() {
   const location = useLocation();
   const { entries, upsert, getById } = useEntries();
   const { remove: removePlannedShift } = usePlanning();
+  const { logos, setLogo, removeLogo } = useAgencyLogos();
+  const [logoError, setLogoError] = useState("");
+
+  async function handleLogoFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !form.employeur) return;
+    setLogoError("");
+    try {
+      const dataUrl = await fileToLogoDataUrl(file, 128);
+      await setLogo(form.employeur, dataUrl);
+    } catch (err) {
+      setLogoError(err?.message || "Échec de l'ajout du logo.");
+    }
+  }
 
   const editing = Boolean(id);
   const duplicateFrom = location.state?.duplicateFrom;
@@ -499,6 +517,33 @@ export default function EntryFormPage() {
               />
             )}
           </Field>
+
+          {form.employeur && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <AgencyLogo
+                employeur={form.employeur}
+                size={32}
+                className="rounded-md border border-slate-200 dark:border-slate-700"
+              />
+              <label className="cursor-pointer rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-teal-400 hover:text-teal-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-teal-500 dark:hover:text-teal-400">
+                {logos[form.employeur] ? "Changer le logo" : "Ajouter le logo"}
+                <input type="file" accept="image/*" onChange={handleLogoFile} className="hidden" />
+              </label>
+              {logos[form.employeur] && (
+                <button
+                  type="button"
+                  onClick={() => removeLogo(form.employeur)}
+                  className="text-xs font-medium text-slate-400 transition hover:text-rose-500 dark:text-slate-500"
+                >
+                  Retirer
+                </button>
+              )}
+              {logoError && (
+                <span className="w-full text-xs text-rose-600 dark:text-rose-400">{logoError}</span>
+              )}
+            </div>
+          )}
+
           {employeurStats && (
             <p className="mt-1.5 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
               Chez <span className="font-medium text-slate-700 dark:text-slate-200">{form.employeur}</span> :{" "}

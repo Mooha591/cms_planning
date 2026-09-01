@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  Briefcase,
   Building2,
   Car,
   Check,
@@ -14,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import TypeBadge from "./TypeBadge";
+import AgencyLogo from "./AgencyLogo";
 import { durMin, formatDateLong, formatDuree, formatHours } from "../lib/time";
 
 // Carte d'une journée dans la liste
@@ -107,7 +107,7 @@ export default function EntryCard({ entry, onEdit, onDelete, onDuplicate }) {
             </span>
             {entry.employeur && (
               <span className="inline-flex items-center gap-1.5">
-                <Briefcase size={14} className="text-slate-400 dark:text-slate-500" />
+                <AgencyLogo employeur={entry.employeur} size={16} />
                 {entry.employeur}
               </span>
             )}

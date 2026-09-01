@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Briefcase,
   CalendarClock,
   Check,
   MapPin,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import { usePlanning } from "../context/PlanningContext";
 import TypeBadge from "../components/TypeBadge";
+import AgencyLogo from "../components/AgencyLogo";
 import { formatDateLong, todayISO } from "../lib/time";
 
 // Onglet Planning : les missions à venir. « Valider » transforme une
@@ -165,7 +165,7 @@ function ShiftCard({ shift, next, overdue, onValidate, onEdit, onDelete }) {
             )}
             {shift.employeur && (
               <span className="inline-flex items-center gap-1.5">
-                <Briefcase size={14} className="text-slate-400 dark:text-slate-500" />
+                <AgencyLogo employeur={shift.employeur} size={16} />
                 {shift.employeur}
               </span>
             )}
