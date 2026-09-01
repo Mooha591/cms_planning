@@ -15,6 +15,7 @@ import MonthInsight from "../components/MonthInsight";
 import SecteurBreakdown from "../components/SecteurBreakdown";
 import EmployeurBreakdown from "../components/EmployeurBreakdown";
 import MonthlyTrends from "../components/MonthlyTrends";
+import SalaryEstimate from "../components/SalaryEstimate";
 import KmEstimate from "../components/KmEstimate";
 import EntryCard from "../components/EntryCard";
 import { monthKeyOf } from "../lib/time";
@@ -246,6 +247,7 @@ export default function HomePage() {
           <SecteurBreakdown entries={monthEntries} />
           <EmployeurBreakdown entries={monthEntries} />
           <MonthlyTrends entries={entries} />
+          <SalaryEstimate heures={totals.heures} />
           <KmEstimate km={totals.km} />
         </section>
       )}
