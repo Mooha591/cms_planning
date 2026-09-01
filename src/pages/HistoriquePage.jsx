@@ -36,21 +36,26 @@ export default function HistoriquePage() {
 
   const stats = useMemo(() => {
     const monthly = Array(12).fill(0);
+    const monthlyKm = Array(12).fill(0);
     let heures = 0;
     let km = 0;
     const jours = new Set();
     let longestDay = { heures: 0, date: null };
     for (const e of yearEntries) {
       const h = Number(e.heures) || 0;
+      const k = Number(e.km) || 0;
+      const m = Number(e.date.slice(5, 7)) - 1;
       heures += h;
-      km += Number(e.km) || 0;
+      km += k;
       jours.add(e.date);
-      monthly[Number(e.date.slice(5, 7)) - 1] += h;
+      monthly[m] += h;
+      monthlyKm[m] += k;
       if (h > longestDay.heures) longestDay = { heures: h, date: e.date };
     }
     const topMonthIdx = monthly.indexOf(Math.max(...monthly));
     return {
       monthly,
+      monthlyKm,
       heures,
       km,
       jours: jours.size,
@@ -61,6 +66,7 @@ export default function HistoriquePage() {
   }, [yearEntries]);
 
   const maxMonth = Math.max(...stats.monthly, 1);
+  const maxMonthKm = Math.max(...stats.monthlyKm, 1);
   const hasData = yearEntries.length > 0;
 
   return (
@@ -119,25 +125,52 @@ export default function HistoriquePage() {
       ) : (
         <>
           {/* Évolution mois par mois */}
-          <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Heures par mois
-            </h2>
-            <div className="flex h-32 items-end gap-1.5">
-              {stats.monthly.map((h, i) => (
-                <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                  <div className="flex w-full flex-1 items-end">
-                    <div
-                      title={`${MOIS_LONG[i]} : ${formatHours(h)}`}
-                      className="w-full rounded-t bg-teal-500 transition-all dark:bg-teal-400"
-                      style={{ height: `${Math.max((h / maxMonth) * 100, h > 0 ? 4 : 0)}%` }}
-                    />
+          <section className="mb-6 space-y-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Heures par mois
+              </h2>
+              <div className="flex h-28 items-end gap-1.5">
+                {stats.monthly.map((h, i) => (
+                  <div key={i} className="flex flex-1 flex-col items-center gap-1">
+                    <div className="flex w-full flex-1 items-end">
+                      <div
+                        title={`${MOIS_LONG[i]} : ${formatHours(h)}`}
+                        className="w-full rounded-t bg-teal-500 transition-all dark:bg-teal-400"
+                        style={{ height: `${Math.max((h / maxMonth) * 100, h > 0 ? 4 : 0)}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                      {MOIS_INIT[i]}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                    {MOIS_INIT[i]}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h2 className="mb-3 flex items-center justify-between text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                <span>Kilomètres par mois</span>
+                <span className="font-normal normal-case tabular-nums text-slate-400 dark:text-slate-500">
+                  {stats.km.toLocaleString("fr-FR")} km sur l'année
+                </span>
+              </h2>
+              <div className="flex h-28 items-end gap-1.5">
+                {stats.monthlyKm.map((k, i) => (
+                  <div key={i} className="flex flex-1 flex-col items-center gap-1">
+                    <div className="flex w-full flex-1 items-end">
+                      <div
+                        title={`${MOIS_LONG[i]} : ${k.toLocaleString("fr-FR")} km`}
+                        className="w-full rounded-t bg-sky-500 transition-all dark:bg-sky-400"
+                        style={{ height: `${Math.max((k / maxMonthKm) * 100, k > 0 ? 4 : 0)}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                      {MOIS_INIT[i]}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
 

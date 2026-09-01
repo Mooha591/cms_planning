@@ -169,6 +169,40 @@ export default function EntryFormPage() {
     return { moisH, moisJ, totalH };
   }, [entries, form.employeur, form.date, id]);
 
+  // Estimation des km à partir de l'historique pour la même destination :
+  // d'abord les passages au même CMS, sinon la moyenne du secteur. On
+  // prend la médiane (robuste aux trajets exceptionnels).
+  const kmSuggestion = useMemo(() => {
+    const sample = (pred) =>
+      entries
+        .filter((e) => e.id !== id && (Number(e.km) || 0) > 0 && pred(e))
+        .map((e) => Number(e.km));
+
+    let vals = [];
+    let label = "";
+    const cmsKey = form.cms.trim().toLowerCase();
+    if (cmsKey) {
+      const v = sample((e) => (e.cms || "").trim().toLowerCase() === cmsKey);
+      if (v.length >= 2) {
+        vals = v;
+        label = `d'après ${v.length} passages à ${form.cms.trim()}`;
+      }
+    }
+    if (!vals.length && form.secteur) {
+      const v = sample((e) => e.secteur === form.secteur);
+      if (v.length >= 3) {
+        vals = v;
+        label = `moyenne du secteur ${form.secteur}`;
+      }
+    }
+    if (!vals.length) return null;
+
+    vals.sort((a, b) => a - b);
+    const mid = Math.floor(vals.length / 2);
+    const median = vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+    return { km: Math.round(median), label };
+  }, [entries, form.cms, form.secteur, id]);
+
   function setField(k, v) {
     setForm((f) => ({ ...f, [k]: v }));
   }
@@ -461,6 +495,24 @@ export default function EntryFormPage() {
               className="input"
             />
           </Field>
+          {kmSuggestion && Number(form.km) !== kmSuggestion.km && (
+            <p className="col-span-2 -mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <span>
+                Estimation :{" "}
+                <span className="font-semibold tabular-nums text-teal-700 dark:text-teal-400">
+                  ≈ {kmSuggestion.km} km
+                </span>{" "}
+                <span className="text-slate-400 dark:text-slate-500">· {kmSuggestion.label}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setField("km", String(kmSuggestion.km))}
+                className="font-medium text-teal-700 hover:underline dark:text-teal-400"
+              >
+                Utiliser
+              </button>
+            </p>
+          )}
         </div>
 
         {/* Aperçu heures */}
