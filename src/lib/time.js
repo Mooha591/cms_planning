@@ -44,6 +44,18 @@ export function computeHours(f) {
   return toHours(Math.max(0, m));
 }
 
+// Minutes réellement travaillées d'une saisie — sans l'arrondi au
+// centième d'heure de computeHours (utilisé pour l'estimation de
+// salaire, où chaque minute compte). Repli sur f.heures si la saisie
+// n'a pas d'horaires (données importées).
+export function computeMinutes(f) {
+  let m = isSplitEntry(f)
+    ? durMin(f.debut, f.fin) + durMin(f.debut2, f.fin2)
+    : Math.max(0, durMin(f.debut, f.fin) - (Number(f.pause) || 0));
+  if (m === 0 && Number(f.heures) > 0) m = Math.round(Number(f.heures) * 60);
+  return m;
+}
+
 // Durée de l'écart entre les deux créneaux (coupure d'un coupé, pause
 // déjeuner d'une journée matin/après-midi)
 export function coupeGap(f) {

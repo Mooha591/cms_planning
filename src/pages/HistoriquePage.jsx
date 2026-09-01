@@ -15,7 +15,7 @@ import EmployeurBreakdown from "../components/EmployeurBreakdown";
 import SalaryEstimate from "../components/SalaryEstimate";
 import KmEstimate from "../components/KmEstimate";
 import YearHeatmap from "../components/YearHeatmap";
-import { formatHours } from "../lib/time";
+import { computeMinutes, formatHours } from "../lib/time";
 
 const MOIS_INIT = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 const MOIS_LONG = [
@@ -39,6 +39,7 @@ export default function HistoriquePage() {
     const monthly = Array(12).fill(0);
     const monthlyKm = Array(12).fill(0);
     let heures = 0;
+    let minutes = 0;
     let km = 0;
     const jours = new Set();
     let longestDay = { heures: 0, date: null };
@@ -47,6 +48,7 @@ export default function HistoriquePage() {
       const k = Number(e.km) || 0;
       const m = Number(e.date.slice(5, 7)) - 1;
       heures += h;
+      minutes += computeMinutes(e);
       km += k;
       jours.add(e.date);
       monthly[m] += h;
@@ -58,6 +60,7 @@ export default function HistoriquePage() {
       monthly,
       monthlyKm,
       heures,
+      minutes,
       km,
       jours: jours.size,
       longestDay,
@@ -210,7 +213,7 @@ export default function HistoriquePage() {
 
           <SecteurBreakdown entries={yearEntries} />
           <EmployeurBreakdown entries={yearEntries} />
-          <SalaryEstimate heures={stats.heures} />
+          <SalaryEstimate heures={stats.minutes / 60} />
           <KmEstimate km={stats.km} />
         </>
       )}

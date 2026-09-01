@@ -18,7 +18,7 @@ import MonthlyTrends from "../components/MonthlyTrends";
 import SalaryEstimate from "../components/SalaryEstimate";
 import KmEstimate from "../components/KmEstimate";
 import EntryCard from "../components/EntryCard";
-import { monthKeyOf } from "../lib/time";
+import { computeMinutes, monthKeyOf } from "../lib/time";
 import { exportEntriesCSV } from "../lib/csv";
 import { exportMonthPDF } from "../lib/pdf";
 import { exportBackup, parseBackupFile } from "../lib/backup";
@@ -104,10 +104,11 @@ export default function HomePage() {
         (acc, e) => {
           acc.km += Number(e.km) || 0;
           acc.heures += Number(e.heures) || 0;
+          acc.minutes += computeMinutes(e);
           acc.jours += 1;
           return acc;
         },
-        { km: 0, heures: 0, jours: 0 },
+        { km: 0, heures: 0, minutes: 0, jours: 0 },
       ),
     [monthEntries],
   );
@@ -247,7 +248,7 @@ export default function HomePage() {
           <SecteurBreakdown entries={monthEntries} />
           <EmployeurBreakdown entries={monthEntries} />
           <MonthlyTrends entries={entries} />
-          <SalaryEstimate heures={totals.heures} />
+          <SalaryEstimate heures={totals.minutes / 60} />
           <KmEstimate km={totals.km} />
         </section>
       )}
