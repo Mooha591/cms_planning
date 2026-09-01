@@ -13,6 +13,7 @@ import Stat from "../components/Stat";
 import SecteurBreakdown from "../components/SecteurBreakdown";
 import EmployeurBreakdown from "../components/EmployeurBreakdown";
 import SalaryEstimate from "../components/SalaryEstimate";
+import KmEstimate from "../components/KmEstimate";
 import YearHeatmap from "../components/YearHeatmap";
 import { formatHours } from "../lib/time";
 
@@ -210,6 +211,7 @@ export default function HistoriquePage() {
           <SecteurBreakdown entries={yearEntries} />
           <EmployeurBreakdown entries={yearEntries} />
           <SalaryEstimate heures={stats.heures} />
+          <KmEstimate km={stats.km} />
         </>
       )}
     </div>
