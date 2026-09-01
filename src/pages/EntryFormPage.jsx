@@ -206,6 +206,16 @@ export default function EntryFormPage() {
     return { km: Math.round(median), label };
   }, [entries, form.cms, form.secteur, id]);
 
+  // Le champ « nom du lieu » s'adapte au poste choisi
+  const lieu = {
+    "": { label: "CMS", ph: "Centre médico-social" },
+    CMS: { label: "CMS", ph: "Centre médico-social" },
+    "Garde 1:1": { label: "Bénéficiaire / lieu", ph: "ex : Mme Dupont" },
+    EMS: { label: "Nom de l'EMS", ph: "ex : EMS des Tilleuls" },
+    EPSM: { label: "Nom de l'EPSM", ph: "ex : EPSM du Lac" },
+    Autre: { label: "Lieu", ph: "ex : hôpital, domicile…" },
+  }[form.poste] || { label: "Lieu", ph: "" };
+
   function setField(k, v) {
     setForm((f) => ({ ...f, [k]: v }));
   }
@@ -403,8 +413,8 @@ export default function EntryFormPage() {
           </div>
         )}
 
-        {/* Poste / structure */}
-        <div className="mt-3">
+        {/* Lieu : poste + secteur + nom de la structure */}
+        <div className="mt-3 grid grid-cols-2 gap-3">
           <Field label="Poste">
             <select
               value={form.poste}
@@ -418,6 +428,37 @@ export default function EntryFormPage() {
                 </option>
               ))}
             </select>
+          </Field>
+          <Field label="Secteur">
+            <select
+              value={form.secteur}
+              onChange={(e) => setField("secteur", e.target.value)}
+              className="input"
+            >
+              <option value="" disabled>
+                Sélectionner
+              </option>
+              {SECTEURS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label={lieu.label} full>
+            <input
+              type="text"
+              list="cms-list"
+              placeholder={lieu.ph}
+              value={form.cms}
+              onChange={(e) => setField("cms", e.target.value)}
+              className="input"
+            />
+            <datalist id="cms-list">
+              {cmsSuggestions.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
           </Field>
         </div>
 
@@ -473,40 +514,9 @@ export default function EntryFormPage() {
           )}
         </div>
 
-        {/* CMS + secteur + kilomètres */}
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <Field label="CMS">
-            <input
-              type="text"
-              list="cms-list"
-              placeholder="Centre médico-social"
-              value={form.cms}
-              onChange={(e) => setField("cms", e.target.value)}
-              className="input"
-            />
-            <datalist id="cms-list">
-              {cmsSuggestions.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
-          </Field>
-          <Field label="Secteur">
-            <select
-              value={form.secteur}
-              onChange={(e) => setField("secteur", e.target.value)}
-              className="input"
-            >
-              <option value="" disabled>
-                Sélectionner
-              </option>
-              {SECTEURS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Kilomètres" full>
+        {/* Kilomètres */}
+        <div className="mt-3">
+          <Field label="Kilomètres">
             <input
               type="number"
               inputMode="numeric"
@@ -518,7 +528,7 @@ export default function EntryFormPage() {
             />
           </Field>
           {kmSuggestion && Number(form.km) !== kmSuggestion.km && (
-            <p className="col-span-2 -mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-xs text-slate-500 dark:text-slate-400">
               <span>
                 Estimation :{" "}
                 <span className="font-semibold tabular-nums text-teal-700 dark:text-teal-400">
