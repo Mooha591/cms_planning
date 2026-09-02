@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { EntriesProvider } from "./context/EntriesContext";
 import { BudgetProvider } from "./context/BudgetContext";
+import { CurrencyProvider } from "./context/CurrencyContext";
 import { PlanningProvider } from "./context/PlanningContext";
 import { LogosProvider } from "./context/LogosContext";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -61,6 +62,7 @@ function AuthGate() {
   return (
     <EntriesProvider>
       <BudgetProvider>
+       <CurrencyProvider>
        <PlanningProvider>
         <LogosProvider>
         <div className="relative min-h-[100dvh] w-full text-left text-slate-900 dark:text-slate-100">
@@ -91,6 +93,7 @@ function AuthGate() {
         </div>
         </LogosProvider>
        </PlanningProvider>
+       </CurrencyProvider>
       </BudgetProvider>
     </EntriesProvider>
   );

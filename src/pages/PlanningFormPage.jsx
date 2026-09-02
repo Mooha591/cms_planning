@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Check, Clock, MapPin, Plus } from "lucide-react";
 import { usePlanning } from "../context/PlanningContext";
 import { useEntries } from "../context/EntriesContext";
@@ -26,9 +26,11 @@ const emptyForm = {
 export default function PlanningFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { upsert, getById } = usePlanning();
   const { entries } = useEntries();
   const editing = Boolean(id);
+  const duplicateFrom = location.state?.duplicateFrom;
 
   const [form, setForm] = useState(() => {
     if (id) {
@@ -47,6 +49,22 @@ export default function PlanningFormPage() {
           note: s.note || "",
         };
       }
+    }
+    // Duplication d'une mission existante : mêmes infos, date remise à
+    // aujourd'hui pour que ce soit évident qu'il faut la changer.
+    if (duplicateFrom) {
+      return {
+        date: todayISO(),
+        type: duplicateFrom.type || "journee",
+        debut: duplicateFrom.debut || "",
+        fin: duplicateFrom.fin || "",
+        poste: duplicateFrom.poste || "",
+        employeur: duplicateFrom.employeur || "",
+        secteur: duplicateFrom.secteur || "",
+        cms: duplicateFrom.cms || "",
+        lieu: duplicateFrom.lieu || "",
+        note: duplicateFrom.note || "",
+      };
     }
     return emptyForm;
   });
@@ -106,7 +124,11 @@ export default function PlanningFormPage() {
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-semibold tracking-tight text-teal-900 dark:text-teal-300">
-          {editing ? "Modifier la mission" : "Planifier une mission"}
+          {editing
+            ? "Modifier la mission"
+            : duplicateFrom
+              ? "Dupliquer une mission"
+              : "Planifier une mission"}
         </h1>
       </header>
 

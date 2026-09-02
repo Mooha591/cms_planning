@@ -305,9 +305,9 @@ export default function EntryFormPage() {
       // Ramène sur l'Accueil en affichant le mois de la journée saisie
       // (sinon une journée d'un autre mois « disparaît » de la vue).
       navigate("/", { state: { focusDate: form.date } });
-    } catch {
+    } catch (err) {
       setSaving(false);
-      setError("Impossible d'enregistrer : vérifie ta connexion et réessaie.");
+      setError(`Impossible d'enregistrer : ${err.message || "vérifie ta connexion et réessaie."}`);
     }
   }
 

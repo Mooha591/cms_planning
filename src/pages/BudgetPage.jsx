@@ -2,13 +2,16 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Wallet } from "lucide-react";
 import { useBudget } from "../context/BudgetContext";
+import { CURRENCIES, useCurrency } from "../context/CurrencyContext";
 import BudgetSummary from "../components/BudgetSummary";
+import CurrencyBreakdown from "../components/CurrencyBreakdown";
 import TransactionCard from "../components/TransactionCard";
 import { monthKeyOf } from "../lib/time";
 
 // Page Budget : récap du mois (revenus/dépenses/solde) + liste des transactions
 export default function BudgetPage() {
   const { transactions, loading, remove } = useBudget();
+  const { currency, setCurrency, toDisplay, ratesError } = useCurrency();
   const navigate = useNavigate();
 
   const [viewMonth, setViewMonth] = useState(() => {
@@ -26,11 +29,14 @@ export default function BudgetPage() {
     [transactions, monthKey],
   );
 
+  // Chaque transaction garde sa devise d'origine ; on convertit vers la
+  // devise d'affichage choisie avant de sommer, sinon additionner des
+  // EUR et des CHF tels quels n'aurait aucun sens.
   const totals = useMemo(
     () =>
       monthTransactions.reduce(
         (acc, t) => {
-          const montant = Number(t.montant) || 0;
+          const montant = toDisplay(t.montant, t.currency || "EUR");
           if (t.type === "revenu") acc.revenus += montant;
           else acc.depenses += montant;
           acc.solde = acc.revenus - acc.depenses;
@@ -38,7 +44,7 @@ export default function BudgetPage() {
         },
         { revenus: 0, depenses: 0, solde: 0 },
       ),
-    [monthTransactions],
+    [monthTransactions, toDisplay],
   );
 
   const monthLabel = viewMonth.toLocaleDateString("fr-FR", {
@@ -56,7 +62,7 @@ export default function BudgetPage() {
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-800 text-white shadow-sm dark:bg-teal-700">
           <Wallet size={20} />
         </span>
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold tracking-tight text-teal-900 dark:text-teal-300">
             Budget
           </h1>
@@ -64,7 +70,28 @@ export default function BudgetPage() {
             Revenus & dépenses du mois
           </p>
         </div>
+        <label className="shrink-0">
+          <span className="sr-only">Devise</span>
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.symbol} {c.code}
+              </option>
+            ))}
+          </select>
+        </label>
       </header>
+
+      {ratesError && (
+        <p className="mb-4 text-xs text-amber-600 dark:text-amber-400">
+          Taux de change indisponibles ({ratesError}) : montants affichés
+          sans conversion pour l'instant.
+        </p>
+      )}
 
       <BudgetSummary
         monthLabel={monthLabel}
@@ -72,6 +99,8 @@ export default function BudgetPage() {
         onPrev={() => changeMonth(-1)}
         onNext={() => changeMonth(1)}
       />
+
+      <CurrencyBreakdown transactions={monthTransactions} />
 
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">

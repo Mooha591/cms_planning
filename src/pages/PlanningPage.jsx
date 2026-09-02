@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   CalendarClock,
   Check,
+  Copy,
   MapPin,
   Pencil,
   Plus,
@@ -77,6 +78,9 @@ export default function PlanningPage() {
                     overdue
                     onValidate={() => valider(s)}
                     onEdit={() => navigate(`/planning/modifier/${s.id}`)}
+                    onDuplicate={() =>
+                      navigate("/planning/nouveau", { state: { duplicateFrom: s } })
+                    }
                     onDelete={() => remove(s.id)}
                   />
                 ))}
@@ -101,6 +105,9 @@ export default function PlanningPage() {
                     next={i === 0}
                     onValidate={s.date <= today ? () => valider(s) : null}
                     onEdit={() => navigate(`/planning/modifier/${s.id}`)}
+                    onDuplicate={() =>
+                      navigate("/planning/nouveau", { state: { duplicateFrom: s } })
+                    }
                     onDelete={() => remove(s.id)}
                   />
                 ))}
@@ -120,7 +127,7 @@ export default function PlanningPage() {
   );
 }
 
-function ShiftCard({ shift, next, overdue, onValidate, onEdit, onDelete }) {
+function ShiftCard({ shift, next, overdue, onValidate, onEdit, onDuplicate, onDelete }) {
   const [confirming, setConfirming] = useState(false);
   useEffect(() => {
     if (!confirming) return;
@@ -194,6 +201,13 @@ function ShiftCard({ shift, next, overdue, onValidate, onEdit, onDelete }) {
             aria-label="Modifier"
           >
             <Pencil size={16} />
+          </button>
+          <button
+            onClick={onDuplicate}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-teal-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-teal-400"
+            aria-label="Dupliquer"
+          >
+            <Copy size={16} />
           </button>
           {confirming ? (
             <button

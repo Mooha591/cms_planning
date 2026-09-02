@@ -2,23 +2,17 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Check, Plus } from "lucide-react";
 import { useBudget } from "../context/BudgetContext";
+import { CURRENCIES, useCurrency } from "../context/CurrencyContext";
 import Field from "../components/Field";
 import { BUDGET_CATEGORIES, BUDGET_TYPES } from "../lib/budgetConstants";
 import { todayISO } from "../lib/time";
-
-const emptyForm = {
-  date: todayISO(),
-  type: "depense",
-  libelle: "",
-  categorie: "",
-  montant: "",
-};
 
 // Page de création / modification d'une transaction de budget
 export default function BudgetFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { upsert, getById } = useBudget();
+  const { currency: displayCurrency } = useCurrency();
 
   const editing = Boolean(id);
 
@@ -32,10 +26,20 @@ export default function BudgetFormPage() {
           libelle: t.libelle || "",
           categorie: t.categorie || "",
           montant: String(t.montant ?? ""),
+          currency: t.currency || "EUR",
         };
       }
     }
-    return emptyForm;
+    // Nouvelle transaction : la devise saisie par défaut suit la devise
+    // d'affichage actuelle, modifiable si ce paiement était dans une autre.
+    return {
+      date: todayISO(),
+      type: "depense",
+      libelle: "",
+      categorie: "",
+      montant: "",
+      currency: displayCurrency,
+    };
   });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -61,11 +65,12 @@ export default function BudgetFormPage() {
         libelle: form.libelle.trim(),
         categorie: form.categorie,
         montant,
+        currency: form.currency,
       });
       navigate("/budget");
-    } catch {
+    } catch (err) {
       setSaving(false);
-      setError("Impossible d'enregistrer : vérifie ta connexion et réessaie.");
+      setError(`Impossible d'enregistrer : ${err.message || "vérifie ta connexion et réessaie."}`);
     }
   }
 
@@ -123,22 +128,23 @@ export default function BudgetFormPage() {
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Catégorie">
-              <select
-                value={form.categorie}
-                onChange={(e) => setField("categorie", e.target.value)}
-                className="input"
-              >
-                <option value="">—</option>
-                {BUDGET_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Montant (CHF)">
+          <Field label="Catégorie">
+            <select
+              value={form.categorie}
+              onChange={(e) => setField("categorie", e.target.value)}
+              className="input"
+            >
+              <option value="">—</option>
+              {BUDGET_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <div className="grid grid-cols-[1fr_auto] gap-3">
+            <Field label="Montant">
               <input
                 type="number"
                 inputMode="decimal"
@@ -149,6 +155,19 @@ export default function BudgetFormPage() {
                 onChange={(e) => setField("montant", e.target.value)}
                 className="input"
               />
+            </Field>
+            <Field label="Devise">
+              <select
+                value={form.currency}
+                onChange={(e) => setField("currency", e.target.value)}
+                className="input"
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code}
+                  </option>
+                ))}
+              </select>
             </Field>
           </div>
         </div>

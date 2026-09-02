@@ -2,15 +2,14 @@ import { useEffect, useState } from "react";
 import { Check, Pencil, Tag, Trash2 } from "lucide-react";
 import { budgetTypeMeta } from "../lib/budgetConstants";
 import { formatDateLong } from "../lib/time";
-
-const chfFormatter = new Intl.NumberFormat("fr-CH", {
-  style: "currency",
-  currency: "CHF",
-});
+import { useCurrency } from "../context/CurrencyContext";
 
 // Carte d'une transaction dans la liste du budget
 export default function TransactionCard({ transaction, onEdit, onDelete }) {
   const meta = budgetTypeMeta(transaction.type);
+  const { currency, format, toDisplay } = useCurrency();
+  const originalCurrency = transaction.currency || "EUR";
+  const converted = toDisplay(transaction.montant, originalCurrency);
 
   // Suppression à double-tap, comme pour les journées
   const [confirming, setConfirming] = useState(false);
@@ -40,7 +39,7 @@ export default function TransactionCard({ transaction, onEdit, onDelete }) {
             <span
               className={`ml-auto shrink-0 text-sm font-semibold tabular-nums ${meta.amountClass}`}
             >
-              {meta.sign} {chfFormatter.format(Number(transaction.montant) || 0)}
+              {meta.sign} {format(converted)}
             </span>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
@@ -49,6 +48,12 @@ export default function TransactionCard({ transaction, onEdit, onDelete }) {
               <span className="inline-flex items-center gap-1">
                 <Tag size={13} className="text-slate-400 dark:text-slate-500" />
                 {transaction.categorie}
+              </span>
+            )}
+            {originalCurrency !== currency && (
+              <span className="text-slate-400 dark:text-slate-500">
+                (saisi en {Number(transaction.montant).toLocaleString("fr-FR")}{" "}
+                {originalCurrency})
               </span>
             )}
           </div>
