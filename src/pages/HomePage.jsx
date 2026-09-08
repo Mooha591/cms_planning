@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
+  CalendarDays,
+  ChevronDown,
   Download,
   FileText,
+  List,
   NotebookPen,
   Plus,
   Upload,
@@ -10,6 +13,7 @@ import {
   CloudUpload,
 } from "lucide-react";
 import { useEntries } from "../context/EntriesContext";
+import { useAuth } from "../context/AuthContext";
 import MonthSummary from "../components/MonthSummary";
 import MonthInsight from "../components/MonthInsight";
 import SecteurBreakdown from "../components/SecteurBreakdown";
@@ -17,22 +21,43 @@ import EmployeurBreakdown from "../components/EmployeurBreakdown";
 import MonthlyTrends from "../components/MonthlyTrends";
 import SalaryEstimate from "../components/SalaryEstimate";
 import KmEstimate from "../components/KmEstimate";
+import MonthCalendar from "../components/MonthCalendar";
 import EntryCard from "../components/EntryCard";
-import { computeMinutes, monthKeyOf } from "../lib/time";
+import { computeMinutes, formatDateLong, monthKeyOf, todayISO } from "../lib/time";
 import { exportEntriesCSV } from "../lib/csv";
 import { exportMonthPDF } from "../lib/pdf";
 import { exportBackup, parseBackupFile } from "../lib/backup";
 import { loadEntries as loadLocalEntries } from "../lib/storage";
 
 const MIGRATION_DISMISSED_KEY = "kyzenday:migration-dismissed";
+const STATS_OPEN_KEY = "kyzenday:stats-open";
+const HOME_VIEW_KEY = "kyzenday:home-view";
 
 // Page d'accueil : récap du mois + liste des journées
 export default function HomePage() {
   const { entries, loading, remove, importEntries } = useEntries();
+  const { user } = useAuth();
+  const displayName = user?.user_metadata?.full_name?.trim();
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef(null);
   const [backupMessage, setBackupMessage] = useState(null);
+  // Repliée par défaut : au quotidien, ça évite de rallonger la page
+  // avant la liste des journées. Le choix (ouvert/fermé) est mémorisé.
+  const [statsOpen, setStatsOpen] = useState(
+    () => localStorage.getItem(STATS_OPEN_KEY) === "1",
+  );
+  function toggleStats() {
+    setStatsOpen((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem(STATS_OPEN_KEY, next ? "1" : "0");
+      } catch {
+        // stockage indisponible : le choix ne sera juste pas mémorisé
+      }
+      return next;
+    });
+  }
 
   // Anciennes données trouvées dans le stockage local du navigateur
   // (avant le passage au compte Supabase) : proposer de les migrer.
@@ -97,6 +122,37 @@ export default function HomePage() {
     [entries, monthKey],
   );
 
+  // Vue "Journées du mois" : liste (par défaut) ou calendrier — utile pour
+  // sauter directement à un jour précis sans faire défiler tout le mois.
+  const [viewMode, setViewMode] = useState(
+    () => localStorage.getItem(HOME_VIEW_KEY) || "liste",
+  );
+  function changeViewMode(mode) {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(HOME_VIEW_KEY, mode);
+    } catch {
+      // stockage indisponible : le choix ne sera juste pas mémorisé
+    }
+  }
+
+  const [selectedDate, setSelectedDate] = useState(null);
+  useEffect(() => {
+    setSelectedDate(null);
+  }, [monthKey]);
+
+  const entriesByDate = useMemo(() => {
+    const map = new Map();
+    for (const e of monthEntries) {
+      const arr = map.get(e.date);
+      if (arr) arr.push(e);
+      else map.set(e.date, [e]);
+    }
+    return map;
+  }, [monthEntries]);
+
+  const selectedEntries = selectedDate ? entriesByDate.get(selectedDate) || [] : [];
+
   // Totaux du mois
   const totals = useMemo(
     () =>
@@ -130,7 +186,7 @@ export default function HomePage() {
         </span>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-teal-900 dark:text-teal-300">
-            Carnet de tournée
+            {displayName ? `Bonjour, ${displayName}` : "Carnet de tournée"}
           </h1>
           <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             Auxiliaire de santé CRS · suivi des heures & kilomètres
@@ -176,35 +232,151 @@ export default function HomePage() {
         onNext={() => changeMonth(1)}
       />
 
+      {monthEntries.length > 0 && (
+        <section className="mb-6">
+          <button
+            type="button"
+            onClick={toggleStats}
+            aria-expanded={statsOpen}
+            className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold uppercase tracking-wide text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+          >
+            Statistiques du mois
+            <ChevronDown
+              size={18}
+              className={`transition-transform ${statsOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+          {statsOpen && (
+            <div className="mt-4">
+              <MonthInsight
+                entries={entries}
+                monthEntries={monthEntries}
+                viewMonth={viewMonth}
+                totals={totals}
+              />
+              <SecteurBreakdown entries={monthEntries} />
+              <EmployeurBreakdown entries={monthEntries} />
+              <MonthlyTrends entries={entries} />
+              <SalaryEstimate heures={totals.minutes / 60} />
+              <KmEstimate km={totals.km} />
+            </div>
+          )}
+        </section>
+      )}
+
       <section>
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Journées du mois
           </h2>
-          {monthEntries.length > 0 && (
-            <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900">
               <button
-                onClick={() => exportEntriesCSV(monthEntries, totals, monthKey)}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:border-teal-400 hover:text-teal-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-teal-500 dark:hover:text-teal-400"
+                type="button"
+                onClick={() => changeViewMode("liste")}
+                aria-pressed={viewMode === "liste"}
+                aria-label="Vue liste"
+                className={`rounded-md p-1.5 transition ${
+                  viewMode === "liste"
+                    ? "bg-teal-700 text-white dark:bg-teal-600"
+                    : "text-slate-400 hover:text-teal-700 dark:text-slate-500 dark:hover:text-teal-400"
+                }`}
               >
-                <Download size={14} /> CSV
+                <List size={14} />
               </button>
               <button
-                onClick={() =>
-                  exportMonthPDF({ entries: monthEntries, totals, monthLabel, monthKey })
-                }
-                className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
+                type="button"
+                onClick={() => changeViewMode("calendrier")}
+                aria-pressed={viewMode === "calendrier"}
+                aria-label="Vue calendrier"
+                className={`rounded-md p-1.5 transition ${
+                  viewMode === "calendrier"
+                    ? "bg-teal-700 text-white dark:bg-teal-600"
+                    : "text-slate-400 hover:text-teal-700 dark:text-slate-500 dark:hover:text-teal-400"
+                }`}
               >
-                <FileText size={14} /> PDF
+                <CalendarDays size={14} />
               </button>
             </div>
-          )}
+            {monthEntries.length > 0 && (
+              <>
+                <button
+                  onClick={() => exportEntriesCSV(monthEntries, totals, monthKey)}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:border-teal-400 hover:text-teal-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-teal-500 dark:hover:text-teal-400"
+                >
+                  <Download size={14} /> CSV
+                </button>
+                <button
+                  onClick={() =>
+                    exportMonthPDF({ entries: monthEntries, totals, monthLabel, monthKey })
+                  }
+                  className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
+                >
+                  <FileText size={14} /> PDF
+                </button>
+              </>
+            )}
+          </div>
         </div>
+
+        {viewMode === "calendrier" && (
+          <div className="mb-3">
+            <MonthCalendar
+              viewMonth={viewMonth}
+              entriesByDate={entriesByDate}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+            />
+            {monthKey !== monthKeyOf(new Date()) && (
+              <button
+                onClick={() => {
+                  setViewMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+                  setSelectedDate(todayISO());
+                }}
+                className="mt-2 text-xs font-medium text-teal-700 hover:underline dark:text-teal-400"
+              >
+                Revenir à aujourd'hui
+              </button>
+            )}
+          </div>
+        )}
 
         {loading ? (
           <p className="py-10 text-center text-sm text-slate-400 dark:text-slate-500">
             Chargement…
           </p>
+        ) : viewMode === "calendrier" ? (
+          !selectedDate ? (
+            <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+              Clique un jour du calendrier pour voir ou ajouter ta journée.
+            </p>
+          ) : selectedEntries.length > 0 ? (
+            <ul className="space-y-2">
+              {selectedEntries.map((e) => (
+                <EntryCard
+                  key={e.id}
+                  entry={e}
+                  onEdit={(id) => navigate(`/modifier/${id}`)}
+                  onDelete={remove}
+                  onDuplicate={(entry) =>
+                    navigate("/nouveau", { state: { duplicateFrom: entry } })
+                  }
+                />
+              ))}
+            </ul>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 py-8 text-center dark:border-slate-700 dark:bg-slate-900/40">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Aucune journée le {formatDateLong(selectedDate)}.
+              </p>
+              <button
+                onClick={() => navigate("/nouveau", { state: { date: selectedDate } })}
+                className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-teal-700 hover:underline dark:text-teal-400"
+              >
+                <Plus size={16} /> Ajouter cette journée
+              </button>
+            </div>
+          )
         ) : monthEntries.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 py-10 text-center dark:border-slate-700 dark:bg-slate-900/40">
             <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -233,25 +405,6 @@ export default function HomePage() {
           </ul>
         )}
       </section>
-
-      {monthEntries.length > 0 && (
-        <section className="mt-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Statistiques
-          </h2>
-          <MonthInsight
-            entries={entries}
-            monthEntries={monthEntries}
-            viewMonth={viewMonth}
-            totals={totals}
-          />
-          <SecteurBreakdown entries={monthEntries} />
-          <EmployeurBreakdown entries={monthEntries} />
-          <MonthlyTrends entries={entries} />
-          <SalaryEstimate heures={totals.minutes / 60} />
-          <KmEstimate km={totals.km} />
-        </section>
-      )}
 
       {/* Bouton flottant : nouvelle journée (au-dessus de la barre du bas) */}
       <button

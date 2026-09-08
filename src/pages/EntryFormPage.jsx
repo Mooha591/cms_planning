@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -41,6 +41,7 @@ const emptyForm = {
   cms: "",
   secteur: "",
   km: "",
+  note: "",
 };
 
 // Page de création / modification d'une journée
@@ -71,6 +72,8 @@ export default function EntryFormPage() {
   // Mission planifiée qu'on « valide » : pré-remplit le formulaire en
   // gardant sa date, et sera supprimée du planning une fois enregistrée.
   const fromPlanning = location.state?.fromPlanning;
+  // Jour vide cliqué dans le calendrier de l'accueil : pré-remplit juste la date.
+  const prefillDate = location.state?.date;
 
   // État initial : formulaire vide, pré-rempli en édition, depuis une
   // mission du planning, ou depuis une journée à dupliquer.
@@ -91,6 +94,7 @@ export default function EntryFormPage() {
           cms: e.cms || "",
           secteur: e.secteur || "",
           km: String(e.km ?? ""),
+          note: e.note || "",
         };
       }
     }
@@ -106,6 +110,9 @@ export default function EntryFormPage() {
         cms: fromPlanning.cms || "",
         secteur: fromPlanning.secteur || "",
       };
+    }
+    if (prefillDate) {
+      return { ...emptyForm, date: prefillDate };
     }
     if (duplicateFrom) {
       return {
@@ -123,6 +130,9 @@ export default function EntryFormPage() {
         cms: duplicateFrom.cms || "",
         secteur: duplicateFrom.secteur || "",
         km: String(duplicateFrom.km ?? ""),
+        // Note volontairement pas reprise : elle décrit une intervention
+        // précise, pas pertinente à copier telle quelle sur un autre jour.
+        note: "",
       };
     }
     return emptyForm;
@@ -238,6 +248,16 @@ export default function EntryFormPage() {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
+  const noteRef = useRef(null);
+
+  // La zone de message s'adapte à la longueur du texte saisi.
+  useEffect(() => {
+    const el = noteRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [form.note]);
+
   // En changeant de type, on pré-remplit une heure plausible si le champ
   // est vide : reprise à 16h pour un coupé, 13h30 pour une journée
   // matin/après-midi, début à 18h pour un service du soir.
@@ -298,6 +318,7 @@ export default function EntryFormPage() {
         cms: form.cms.trim(),
         secteur: form.secteur,
         km: Number(form.km) || 0,
+        note: form.note.trim(),
       });
       if (fromPlanning?.id) {
         await removePlannedShift(fromPlanning.id).catch(() => {});
@@ -590,6 +611,20 @@ export default function EntryFormPage() {
               </button>
             </p>
           )}
+        </div>
+
+        {/* Message de transmission */}
+        <div className="mt-3">
+          <Field label="Message de transmission">
+            <textarea
+              ref={noteRef}
+              rows={3}
+              placeholder="ex : Mme Martin fatiguée ce matin, arrivée 8h10, repas ok, mal dormi"
+              value={form.note}
+              onChange={(e) => setField("note", e.target.value)}
+              className="input resize-none overflow-hidden"
+            />
+          </Field>
         </div>
 
         {/* Aperçu heures */}

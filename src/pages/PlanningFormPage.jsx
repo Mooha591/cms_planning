@@ -107,9 +107,9 @@ export default function PlanningFormPage() {
         note: form.note.trim(),
       });
       navigate("/planning");
-    } catch {
+    } catch (err) {
       setSaving(false);
-      setError("Impossible d'enregistrer : vérifie ta connexion et réessaie.");
+      setError(`Impossible d'enregistrer : ${err.message || "vérifie ta connexion et réessaie."}`);
     }
   }
 

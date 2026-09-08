@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { LogOut, Moon, Sun } from "lucide-react";
+import { LogOut, Moon, Settings, Sun } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import Logo from "./Logo";
@@ -26,6 +26,13 @@ export default function Navbar() {
           >
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
           </button>
+          <Link
+            to="/reglages"
+            className="rounded-lg p-1.5 text-teal-100 transition hover:bg-white/10"
+            aria-label="Réglages"
+          >
+            <Settings size={18} />
+          </Link>
           <button
             onClick={signOut}
             className="rounded-lg p-1.5 text-teal-100 transition hover:bg-white/10"

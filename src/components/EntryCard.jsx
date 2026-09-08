@@ -8,6 +8,7 @@ import {
   Copy,
   MapPin,
   Pencil,
+  StickyNote,
   Sunrise,
   Sunset,
   Trash2,
@@ -112,6 +113,13 @@ export default function EntryCard({ entry, onEdit, onDelete, onDuplicate }) {
               </span>
             )}
           </div>
+
+          {entry.note && (
+            <p className="mt-1.5 inline-flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <StickyNote size={13} className="mt-0.5 shrink-0 text-slate-400 dark:text-slate-500" />
+              {entry.note}
+            </p>
+          )}
         </div>
 
         {/* Actions */}

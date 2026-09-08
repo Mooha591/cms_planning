@@ -1,19 +1,36 @@
 import { useState } from "react";
 import { Briefcase } from "lucide-react";
 import { formatHours } from "../lib/time";
-import { useTheme } from "../context/ThemeContext";
-import { CHART_COLOR } from "../lib/chartColor";
+import { useCurrency } from "../context/CurrencyContext";
 import AgencyLogo from "./AgencyLogo";
 
-// Répartition des heures du mois par employeur / agence, en barres
-// horizontales — même principe que <SecteurBreakdown /> (une seule teinte,
-// tri décroissant, valeur en bout de barre). Cf. skill dataviz.
-export default function EmployeurBreakdown({ entries }) {
-  const { theme } = useTheme();
-  const color = theme === "dark" ? CHART_COLOR.dark : CHART_COLOR.light;
-  const [active, setActive] = useState(null);
+const RATES_KEY = "kyzenday:taux-par-employeur";
+const CHARGES_KEY = "kyzenday:taux-charges";
+const DEFAULT_CHARGES = "15";
 
-  if (entries.length === 0) return null;
+function readRates() {
+  try {
+    return JSON.parse(localStorage.getItem(RATES_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function writeRates(rates) {
+  try {
+    localStorage.setItem(RATES_KEY, JSON.stringify(rates));
+  } catch {
+    // stockage indisponible : les taux ne seront juste pas mémorisés
+  }
+}
+
+// Tableau des heures/km/paie du mois, par employeur / agence — un taux
+// horaire propre à chaque agence (elles paient rarement le même tarif)
+// permet d'estimer la paie brute/nette de chacune.
+export default function EmployeurBreakdown({ entries }) {
+  const { format } = useCurrency();
+  const [rates, setRates] = useState(readRates);
+  const [charges] = useState(() => Number(localStorage.getItem(CHARGES_KEY)) || Number(DEFAULT_CHARGES));
 
   const byEmployeur = new Map();
   for (const e of entries) {
@@ -25,70 +42,94 @@ export default function EmployeurBreakdown({ entries }) {
     byEmployeur.set(e.employeur, acc);
   }
 
+  // Rien à montrer si aucune journée n'a d'employeur renseigné
+  if (byEmployeur.size === 0) return null;
+
   const rows = [...byEmployeur.entries()].sort((a, b) => b[1].heures - a[1].heures);
 
-  // Rien à comparer si aucun employeur renseigné, ou un seul
-  if (rows.length <= 1) return null;
-
-  const max = Math.max(...rows.map(([, t]) => t.heures), 1);
+  function setRate(employeur, value) {
+    setRates((r) => {
+      const next = { ...r, [employeur]: value };
+      writeRates(next);
+      return next;
+    });
+  }
 
   return (
     <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        <Briefcase size={14} /> Répartition par employeur
+        <Briefcase size={14} /> Par employeur
       </h2>
-      <ul className="space-y-3">
-        {rows.map(([employeur, t]) => {
-          const pct = (t.heures / max) * 100;
-          const isActive = active === employeur;
-          return (
-            <li key={employeur}>
-              <button
-                type="button"
-                onFocus={() => setActive(employeur)}
-                onBlur={() => setActive(null)}
-                onMouseEnter={() => setActive(employeur)}
-                onMouseLeave={() => setActive(null)}
-                aria-label={`${employeur} : ${formatHours(t.heures)}, ${t.jours} jour${
-                  t.jours > 1 ? "s" : ""
-                }, ${t.km.toLocaleString("fr-FR")} km`}
-                className="block w-full rounded text-left"
-              >
-                <div className="mb-1 flex items-center justify-between gap-2 text-sm">
-                  <span className="flex min-w-0 items-center gap-1.5">
-                    <AgencyLogo employeur={employeur} size={16} />
-                    <span className="min-w-0 truncate font-medium text-slate-700 dark:text-slate-200">
-                      {employeur}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <th className="pb-1.5 pr-2 font-medium">Employeur</th>
+              <th className="pb-1.5 pr-2 text-right font-medium">Jours</th>
+              <th className="pb-1.5 pr-2 text-right font-medium">Heures</th>
+              <th className="pb-1.5 pr-2 text-right font-medium">Km</th>
+              <th className="pb-1.5 pr-2 text-right font-medium">Taux/h</th>
+              <th className="pb-1.5 text-right font-medium">Brut · Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([employeur, t]) => {
+              const taux = rates[employeur] ?? "";
+              const brut = (Number(taux) || 0) * t.heures;
+              const net = brut * (1 - charges / 100);
+              return (
+                <tr key={employeur} className="border-t border-slate-100 dark:border-slate-800">
+                  <td className="py-1.5 pr-2">
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <AgencyLogo employeur={employeur} size={16} />
+                      <span className="min-w-0 truncate font-semibold text-slate-700 dark:text-slate-200">
+                        {employeur}
+                      </span>
                     </span>
-                  </span>
-                  <span className="shrink-0 font-semibold tabular-nums text-slate-700 dark:text-slate-200">
+                  </td>
+                  <td className="py-1.5 pr-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
+                    {t.jours}
+                  </td>
+                  <td className="py-1.5 pr-2 text-right font-medium tabular-nums text-teal-700 dark:text-teal-400">
                     {formatHours(t.heures)}
-                  </span>
-                </div>
-                <div className="h-6 w-full overflow-hidden rounded-md bg-slate-100 dark:bg-slate-800">
-                  <div
-                    className="h-6 transition-all duration-300"
-                    style={{
-                      width: `${pct}%`,
-                      backgroundColor: color,
-                      opacity: isActive ? 1 : 0.85,
-                      borderRadius: "0 4px 4px 0",
-                    }}
-                  />
-                </div>
-                <p
-                  className={`mt-1 text-xs text-slate-400 transition-opacity dark:text-slate-500 ${
-                    isActive ? "opacity-100" : "opacity-0"
-                  }`}
-                >
-                  {t.jours} jour{t.jours > 1 ? "s" : ""} ·{" "}
-                  {t.km.toLocaleString("fr-FR")} km
-                </p>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+                  </td>
+                  <td className="py-1.5 pr-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
+                    {t.km.toLocaleString("fr-FR")}
+                  </td>
+                  <td className="py-1.5 pr-2 text-right">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.05"
+                      placeholder="—"
+                      value={taux}
+                      onChange={(e) => setRate(employeur, e.target.value)}
+                      className="input h-7 w-16 px-1.5 text-right text-xs"
+                    />
+                  </td>
+                  <td className="py-1.5 text-right text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                    {taux ? (
+                      <>
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">
+                          {format(brut)}
+                        </span>{" "}
+                        ·{" "}
+                        <span className="font-semibold text-teal-700 dark:text-teal-400">
+                          {format(net)}
+                        </span>
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

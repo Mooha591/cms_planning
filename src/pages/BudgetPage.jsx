@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Wallet } from "lucide-react";
+import { Download, FileText, Plus, Wallet } from "lucide-react";
 import { useBudget } from "../context/BudgetContext";
 import { CURRENCIES, useCurrency } from "../context/CurrencyContext";
 import BudgetSummary from "../components/BudgetSummary";
 import CurrencyBreakdown from "../components/CurrencyBreakdown";
 import TransactionCard from "../components/TransactionCard";
 import { monthKeyOf } from "../lib/time";
+import { exportBudgetCSV } from "../lib/budgetCsv";
+import { exportBudgetPDF } from "../lib/pdf";
 
 // Page Budget : récap du mois (revenus/dépenses/solde) + liste des transactions
 export default function BudgetPage() {
@@ -103,9 +105,29 @@ export default function BudgetPage() {
       <CurrencyBreakdown transactions={monthTransactions} />
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          Transactions du mois
-        </h2>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Transactions du mois
+          </h2>
+          {monthTransactions.length > 0 && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => exportBudgetCSV(monthTransactions, monthKey)}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:border-teal-400 hover:text-teal-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-teal-500 dark:hover:text-teal-400"
+              >
+                <Download size={14} /> CSV
+              </button>
+              <button
+                onClick={() =>
+                  exportBudgetPDF({ transactions: monthTransactions, monthLabel, monthKey })
+                }
+                className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
+              >
+                <FileText size={14} /> PDF
+              </button>
+            </div>
+          )}
+        </div>
 
         {loading ? (
           <p className="py-10 text-center text-sm text-slate-400 dark:text-slate-500">
