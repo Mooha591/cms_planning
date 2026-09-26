@@ -78,6 +78,7 @@ export function EntriesProvider({ children }) {
   // migration des anciennes données locales) : fusionne par id.
   // Renvoie le nombre de journées effectivement importées.
   async function importEntries(imported) {
+    if (!imported || imported.length === 0) return 0;
     const rows = imported.map((e) => ({ ...e, user_id: user.id }));
     const { data, error: importError } = await supabase
       .from("entries")

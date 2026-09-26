@@ -1,27 +1,12 @@
-import { useState } from "react";
 import { Coins } from "lucide-react";
 import { formatHours } from "../lib/time";
+import { computeSalary } from "../lib/salary";
+import { useSyncedLocalStorage } from "../lib/useLocalStorage";
 import { useCurrency } from "../context/CurrencyContext";
 
 const TAUX_KEY = "kyzenday:taux-horaire";
 const CHARGES_KEY = "kyzenday:taux-charges";
 const DEFAULT_CHARGES = "15"; // % — ordre de grandeur des cotisations salariales (ajustable)
-
-function readStored(key, fallback) {
-  try {
-    return localStorage.getItem(key) ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeStored(key, value) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // stockage indisponible : la valeur ne sera juste pas mémorisée
-  }
-}
 
 // Estimation du salaire brut ET net, à partir d'un taux horaire et d'un
 // taux de charges saisis par l'utilisateur (mémorisés sur cet appareil).
@@ -29,22 +14,10 @@ function writeStored(key, value) {
 // que ce ne soit pas figé en CHF si l'utilisateur travaille ailleurs.
 export default function SalaryEstimate({ heures }) {
   const { currency, format } = useCurrency();
-  const [taux, setTaux] = useState(() => readStored(TAUX_KEY, ""));
-  const [charges, setCharges] = useState(() => readStored(CHARGES_KEY, DEFAULT_CHARGES));
+  const [taux, handleTauxChange] = useSyncedLocalStorage(TAUX_KEY, "");
+  const [charges, handleChargesChange] = useSyncedLocalStorage(CHARGES_KEY, DEFAULT_CHARGES);
 
-  function handleTauxChange(v) {
-    setTaux(v);
-    writeStored(TAUX_KEY, v);
-  }
-
-  function handleChargesChange(v) {
-    setCharges(v);
-    writeStored(CHARGES_KEY, v);
-  }
-
-  const brut = (Number(taux) || 0) * heures;
-  const tauxCharges = Math.min(100, Math.max(0, Number(charges) || 0));
-  const net = brut * (1 - tauxCharges / 100);
+  const { brut, net, charges: tauxCharges } = computeSalary(heures, taux, charges);
 
   return (
     <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">

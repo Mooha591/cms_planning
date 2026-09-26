@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { Car } from "lucide-react";
+import { useSyncedLocalStorage } from "../lib/useLocalStorage";
 
 const STORAGE_KEY = "kyzenday:taux-km";
 // Taux kilométrique usuel en Suisse : CHF 0.70 / km
@@ -15,22 +15,7 @@ const chfFormatter = new Intl.NumberFormat("fr-CH", {
 // par l'utilisateur (mémorisé sur cet appareil), même principe que
 // <SalaryEstimate />. Pré-rempli à 0.70 (barème suisse).
 export default function KmEstimate({ km }) {
-  const [taux, setTaux] = useState(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) ?? DEFAULT_TAUX;
-    } catch {
-      return DEFAULT_TAUX;
-    }
-  });
-
-  function handleChange(v) {
-    setTaux(v);
-    try {
-      localStorage.setItem(STORAGE_KEY, v);
-    } catch {
-      // stockage indisponible : la valeur ne sera juste pas mémorisée
-    }
-  }
+  const [taux, handleChange] = useSyncedLocalStorage(STORAGE_KEY, DEFAULT_TAUX);
 
   const total = (Number(taux) || 0) * (Number(km) || 0);
 

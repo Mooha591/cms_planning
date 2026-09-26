@@ -69,9 +69,34 @@ export function BudgetProvider({ children }) {
     return transactions.find((t) => t.id === id);
   }
 
+  // Importe une liste de transactions (restauration d'une sauvegarde) :
+  // fusionne par id. Renvoie le nombre de transactions effectivement importées.
+  async function importTransactions(imported) {
+    if (!imported || imported.length === 0) return 0;
+    const rows = imported.map((t) => ({ ...t, user_id: user.id }));
+    const { data, error: importError } = await supabase
+      .from("budget_transactions")
+      .upsert(rows)
+      .select();
+    if (importError) {
+      setError(importError.message);
+      return 0;
+    }
+    setTransactions((list) => {
+      const next = [...list];
+      for (const row of data) {
+        const i = next.findIndex((t) => t.id === row.id);
+        if (i === -1) next.push(row);
+        else next[i] = row;
+      }
+      return next;
+    });
+    return data.length;
+  }
+
   return (
     <BudgetContext.Provider
-      value={{ transactions, loading, error, upsert, remove, getById }}
+      value={{ transactions, loading, error, upsert, remove, getById, importTransactions }}
     >
       {children}
     </BudgetContext.Provider>

@@ -15,7 +15,7 @@ import EmployeurBreakdown from "../components/EmployeurBreakdown";
 import SalaryEstimate from "../components/SalaryEstimate";
 import KmEstimate from "../components/KmEstimate";
 import YearHeatmap from "../components/YearHeatmap";
-import { computeMinutes, formatHours } from "../lib/time";
+import { computeMinutes, countUniqueDays, formatHours } from "../lib/time";
 
 const MOIS_INIT = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 const MOIS_LONG = [
@@ -41,7 +41,6 @@ export default function HistoriquePage() {
     let heures = 0;
     let minutes = 0;
     let km = 0;
-    const jours = new Set();
     let longestDay = { heures: 0, date: null };
     for (const e of yearEntries) {
       const h = Number(e.heures) || 0;
@@ -50,11 +49,11 @@ export default function HistoriquePage() {
       heures += h;
       minutes += computeMinutes(e);
       km += k;
-      jours.add(e.date);
       monthly[m] += h;
       monthlyKm[m] += k;
       if (h > longestDay.heures) longestDay = { heures: h, date: e.date };
     }
+    const jours = countUniqueDays(yearEntries);
     const topMonthIdx = monthly.indexOf(Math.max(...monthly));
     return {
       monthly,
@@ -62,10 +61,10 @@ export default function HistoriquePage() {
       heures,
       minutes,
       km,
-      jours: jours.size,
+      jours,
       longestDay,
       topMonthIdx: monthly[topMonthIdx] > 0 ? topMonthIdx : -1,
-      moyenne: jours.size ? heures / jours.size : 0,
+      moyenne: jours ? heures / jours : 0,
     };
   }, [yearEntries]);
 

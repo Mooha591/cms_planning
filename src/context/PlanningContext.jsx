@@ -66,8 +66,35 @@ export function PlanningProvider({ children }) {
     return shifts.find((s) => s.id === id);
   }
 
+  // Importe une liste de missions (restauration d'une sauvegarde) : fusionne
+  // par id. Renvoie le nombre de missions effectivement importées.
+  async function importShifts(imported) {
+    if (!imported || imported.length === 0) return 0;
+    const rows = imported.map((s) => ({ ...s, user_id: user.id }));
+    const { data, error: importError } = await supabase
+      .from("planning")
+      .upsert(rows)
+      .select();
+    if (importError) {
+      setError(importError.message);
+      return 0;
+    }
+    setShifts((list) => {
+      const next = [...list];
+      for (const row of data) {
+        const i = next.findIndex((s) => s.id === row.id);
+        if (i === -1) next.push(row);
+        else next[i] = row;
+      }
+      return next.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    });
+    return data.length;
+  }
+
   return (
-    <PlanningContext.Provider value={{ shifts, loading, error, upsert, remove, getById }}>
+    <PlanningContext.Provider
+      value={{ shifts, loading, error, upsert, remove, getById, importShifts }}
+    >
       {children}
     </PlanningContext.Provider>
   );

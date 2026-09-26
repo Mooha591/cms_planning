@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Building2 } from "lucide-react";
-import { formatHours } from "../lib/time";
+import { countUniqueDays, formatHours } from "../lib/time";
 import { useTheme } from "../context/ThemeContext";
 import { CHART_COLOR } from "../lib/chartColor";
 
@@ -15,14 +15,22 @@ export default function SecteurBreakdown({ entries }) {
 
   if (entries.length === 0) return null;
 
+  // Un jour est compté une seule fois même s'il a plusieurs saisies —
+  // cf. countUniqueDays.
   const bySecteur = new Map();
+  const entriesBySecteur = new Map();
   for (const e of entries) {
     const key = e.secteur || "Non défini";
-    const acc = bySecteur.get(key) || { heures: 0, km: 0, jours: 0 };
+    const acc = bySecteur.get(key) || { heures: 0, km: 0 };
     acc.heures += Number(e.heures) || 0;
     acc.km += Number(e.km) || 0;
-    acc.jours += 1;
     bySecteur.set(key, acc);
+    const list = entriesBySecteur.get(key) || [];
+    list.push(e);
+    entriesBySecteur.set(key, list);
+  }
+  for (const [key, acc] of bySecteur) {
+    acc.jours = countUniqueDays(entriesBySecteur.get(key));
   }
 
   const rows = [...bySecteur.entries()].sort((a, b) => b[1].heures - a[1].heures);

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Briefcase } from "lucide-react";
-import { formatHours } from "../lib/time";
+import { countUniqueDays, formatHours } from "../lib/time";
+import { computeSalary } from "../lib/salary";
+import { useSyncedLocalStorage } from "../lib/useLocalStorage";
 import { useCurrency } from "../context/CurrencyContext";
 import AgencyLogo from "./AgencyLogo";
 
@@ -30,16 +32,27 @@ function writeRates(rates) {
 export default function EmployeurBreakdown({ entries }) {
   const { format } = useCurrency();
   const [rates, setRates] = useState(readRates);
-  const [charges] = useState(() => Number(localStorage.getItem(CHARGES_KEY)) || Number(DEFAULT_CHARGES));
+  // Clé partagée avec <SalaryEstimate /> : useSyncedLocalStorage propage
+  // immédiatement toute modification du taux de charges entre les deux
+  // composants, même montés en même temps sur la même page.
+  const [charges] = useSyncedLocalStorage(CHARGES_KEY, DEFAULT_CHARGES);
 
+  // Un jour est compté une seule fois même s'il a plusieurs saisies (ex :
+  // matin + soir enregistrés séparément) — cf. countUniqueDays.
   const byEmployeur = new Map();
+  const datesByEmployeur = new Map();
   for (const e of entries) {
     if (!e.employeur) continue;
-    const acc = byEmployeur.get(e.employeur) || { heures: 0, km: 0, jours: 0 };
+    const acc = byEmployeur.get(e.employeur) || { heures: 0, km: 0 };
     acc.heures += Number(e.heures) || 0;
     acc.km += Number(e.km) || 0;
-    acc.jours += 1;
     byEmployeur.set(e.employeur, acc);
+    const dates = datesByEmployeur.get(e.employeur) || [];
+    dates.push(e);
+    datesByEmployeur.set(e.employeur, dates);
+  }
+  for (const [employeur, acc] of byEmployeur) {
+    acc.jours = countUniqueDays(datesByEmployeur.get(employeur));
   }
 
   // Rien à montrer si aucune journée n'a d'employeur renseigné
@@ -76,8 +89,7 @@ export default function EmployeurBreakdown({ entries }) {
           <tbody>
             {rows.map(([employeur, t]) => {
               const taux = rates[employeur] ?? "";
-              const brut = (Number(taux) || 0) * t.heures;
-              const net = brut * (1 - charges / 100);
+              const { brut, net } = computeSalary(t.heures, taux, charges);
               return (
                 <tr key={employeur} className="border-t border-slate-100 dark:border-slate-800">
                   <td className="py-1.5 pr-2">

@@ -97,6 +97,13 @@ export function formatDateShort(iso) {
   return d.toLocaleDateString("fr-FR");
 }
 
+// Nombre de jours réellement travaillés — dédoublonne par date, pas par
+// ligne : un jour saisi en 2 créneaux séparés (ex. matin + soir en deux
+// journées distinctes) ne doit compter que pour 1 jour, pas 2.
+export function countUniqueDays(entries) {
+  return new Set(entries.map((e) => e.date)).size;
+}
+
 // Les n derniers mois calendaires (dont le mois en cours), du plus ancien
 // au plus récent — sert de base aux graphiques d'évolution.
 export function lastMonths(n) {
