@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Sparkles, Send } from "lucide-react";
 import { useEntries } from "../context/EntriesContext";
 import { useBudget } from "../context/BudgetContext";
@@ -15,11 +15,6 @@ export default function AssistantPage() {
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const scrollRef = useRef(null);
-
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
 
   function ask(question) {
     const q = question.trim();
@@ -49,7 +44,7 @@ export default function AssistantPage() {
         </div>
       </header>
 
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto pb-4">
+      <div className="flex-1 space-y-3 pb-4">
         {messages.length === 0 && (
           <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
             Salut 👋 Je réponds instantanément à partir de tes données (heures,
