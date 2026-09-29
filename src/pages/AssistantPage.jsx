@@ -1,13 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, Send, AlertTriangle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Sparkles, Send } from "lucide-react";
 import { useEntries } from "../context/EntriesContext";
 import { useBudget } from "../context/BudgetContext";
 import { usePlanning } from "../context/PlanningContext";
-import { supabase } from "../lib/supabaseClient";
-import { buildAssistantContext } from "../lib/assistantContext";
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
+import { answerQuestion } from "../lib/localAssistant";
 
 const SUGGESTIONS = [
   "Combien d'heures ai-je travaillé ce mois-ci ?",
@@ -17,6 +13,9 @@ const SUGGESTIONS = [
   "Quel employeur m'a fait travailler le plus ?",
 ];
 
+// Assistant 100% local : les réponses sont calculées dans l'app à partir des
+// données (heures, budget, planning) — aucun appel réseau, aucune IA externe.
+// Instantané, gratuit, illimité, fonctionne hors-ligne.
 export default function AssistantPage() {
   const { entries } = useEntries();
   const { transactions } = useBudget();
@@ -24,80 +23,22 @@ export default function AssistantPage() {
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const scrollRef = useRef(null);
-
-  // Le contexte (données déjà calculées) est reconstruit à chaque envoi pour
-  // rester à jour, mais on mémorise la fonction sur les données sources.
-  const contextSource = useMemo(
-    () => ({ entries, transactions, shifts }),
-    [entries, transactions, shifts],
-  );
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages]);
 
-  async function ask(question) {
+  function ask(question) {
     const q = question.trim();
-    if (!q || loading) return;
-    setError("");
+    if (!q) return;
     setInput("");
-    const history = messages.map((m) => ({ role: m.role, text: m.text }));
-    setMessages((prev) => [...prev, { role: "user", text: q }]);
-    setLoading(true);
-    // Une bulle assistant est-elle déjà affichée ? (dès le 1er morceau reçu)
-    let started = false;
-    try {
-      const context = buildAssistantContext(contextSource);
-      // On appelle la fonction directement (pas via functions.invoke, qui
-      // attend la réponse complète) pour pouvoir lire le flux au fur et à mesure.
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token ?? "";
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/assistant`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          apikey: SUPABASE_ANON,
-        },
-        body: JSON.stringify({ question: q, context, history }),
-      });
-
-      if (!res.ok) {
-        let msg = `Erreur de l'assistant (${res.status}).`;
-        try {
-          const body = await res.json();
-          if (body?.error) msg = body.error;
-          if (body?.detail) msg += ` — ${typeof body.detail === "string" ? body.detail.slice(0, 400) : ""}`;
-        } catch {
-          // corps illisible : on garde le message générique
-        }
-        throw new Error(msg);
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let acc = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        acc += decoder.decode(value, { stream: true });
-        if (!started) {
-          started = true;
-          setLoading(false);
-          setMessages((prev) => [...prev, { role: "assistant", text: acc }]);
-        } else {
-          setMessages((prev) => [...prev.slice(0, -1), { role: "assistant", text: acc }]);
-        }
-      }
-      if (!acc.trim()) throw new Error("L'assistant n'a pas su répondre, reformule ta question.");
-    } catch (err) {
-      setError(err.message || "L'assistant est indisponible, réessaie.");
-    } finally {
-      setLoading(false);
-    }
+    const reponse = answerQuestion(q, { entries, transactions, shifts });
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", text: q },
+      { role: "assistant", text: reponse },
+    ]);
   }
 
   return (
@@ -120,8 +61,9 @@ export default function AssistantPage() {
         {messages.length === 0 && (
           <div className="space-y-3">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              Salut 👋 Je réponds à partir de tes données (heures, km, budget,
-              planning). Essaie une des questions ci-dessous ou écris la tienne.
+              Salut 👋 Je réponds instantanément à partir de tes données (heures,
+              km, budget, planning), même hors-ligne. Essaie une des questions
+              ci-dessous ou écris la tienne.
             </div>
             <div className="flex flex-wrap gap-2">
               {SUGGESTIONS.map((s) => (
@@ -153,25 +95,6 @@ export default function AssistantPage() {
             </div>
           </div>
         ))}
-
-        {loading && (
-          <div className="flex justify-start">
-            <div className="rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-400 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
-              <span className="inline-flex gap-1">
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" />
-              </span>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="flex items-start gap-1.5 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:bg-rose-950/30 dark:text-rose-400">
-            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-            {error}
-          </div>
-        )}
       </div>
 
       <form
@@ -196,7 +119,7 @@ export default function AssistantPage() {
         />
         <button
           type="submit"
-          disabled={loading || !input.trim()}
+          disabled={!input.trim()}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-700 text-white transition hover:bg-teal-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
           aria-label="Envoyer"
         >
