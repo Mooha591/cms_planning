@@ -30,7 +30,8 @@ export default function CmsDistances({ entries }) {
       </h2>
       <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
         Distance aller (domicile → CMS) — certaines sont pré-remplies
-        automatiquement. Le total compte un aller-retour par jour travaillé.
+        automatiquement. Allers-retours comptés selon le type de journée :
+        matin+soir ou coupé = 2, sinon 1.
       </p>
 
       <div className="overflow-x-auto">
@@ -39,8 +40,9 @@ export default function CmsDistances({ entries }) {
             <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
               <th className="pb-1.5 pr-2 font-medium">CMS</th>
               <th className="pb-1.5 pr-2 text-right font-medium">Jours</th>
+              <th className="pb-1.5 pr-2 text-right font-medium">A/R</th>
               <th className="pb-1.5 pr-2 text-right font-medium">Aller (km)</th>
-              <th className="pb-1.5 text-right font-medium">Total A/R</th>
+              <th className="pb-1.5 text-right font-medium">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -51,6 +53,9 @@ export default function CmsDistances({ entries }) {
                 </td>
                 <td className="py-1.5 pr-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
                   {r.jours}
+                </td>
+                <td className="py-1.5 pr-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
+                  {r.allersRetours}
                 </td>
                 <td className="py-1.5 pr-2 text-right">
                   <input
@@ -83,7 +88,7 @@ export default function CmsDistances({ entries }) {
           </tbody>
           <tfoot>
             <tr className="border-t border-slate-200 dark:border-slate-700">
-              <td className="pt-2 font-semibold text-slate-700 dark:text-slate-200" colSpan={3}>
+              <td className="pt-2 font-semibold text-slate-700 dark:text-slate-200" colSpan={4}>
                 Total déductible (km)
               </td>
               <td className="pt-2 text-right font-bold tabular-nums text-teal-800 dark:text-teal-300">

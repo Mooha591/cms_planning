@@ -61,26 +61,50 @@ export function writeDistances(map) {
   }
 }
 
+// Nombre d'allers-retours domicile↔travail pour UN jour, selon sa composition :
+//   - coupé : deux services séparés (retour maison entre les deux) → 2
+//   - matin + soir (après-midi libre → on rentre) → 2
+//   - matin + après-midi (continu, on reste) → 1
+//   - service unique / journée complète → 1
+function tripsForDay(dayEntries) {
+  const types = new Set(dayEntries.map((e) => e.type));
+  if (types.has("coupe")) return 2;
+  const hasMatin = types.has("matin");
+  const hasAprem = types.has("journee"); // "journee" = après-midi (Aprem)
+  const hasSoir = types.has("soir");
+  // Un service du soir après un service de journée = retour maison entre-temps.
+  if (hasSoir && (hasMatin || hasAprem)) return 2;
+  return 1;
+}
+
 // À partir des journées et des distances aller (par CMS), calcule pour chaque
-// CMS : le nombre de jours travaillés (dates distinctes), la distance aller,
-// et le total aller-retour de l'année. Plus le grand total.
+// CMS : les jours travaillés, le nombre d'allers-retours (selon le type de
+// journée), la distance aller, et le total km. Plus le grand total.
 export function computeCommute(entries, distances) {
-  const daysByCms = new Map(); // cms -> Set de dates distinctes
+  // cms -> (date -> saisies de ce jour), pour compter les A/R jour par jour
+  const byCms = new Map();
   for (const e of entries) {
     const cms = (e.cms || "").trim();
     if (!cms) continue;
-    if (!daysByCms.has(cms)) daysByCms.set(cms, new Set());
-    daysByCms.get(cms).add(e.date);
+    if (!byCms.has(cms)) byCms.set(cms, new Map());
+    const byDate = byCms.get(cms);
+    if (!byDate.has(e.date)) byDate.set(e.date, []);
+    byDate.get(e.date).push(e);
   }
 
   const perCms = [];
   let totalKm = 0;
-  for (const [cms, dates] of daysByCms) {
+  for (const [cms, byDate] of byCms) {
     const { km: oneWay, isDefault } = resolveOneWay(cms, distances);
-    const jours = dates.size;
-    const kmTotal = jours * oneWay * 2; // un aller-retour par jour travaillé
+    let jours = 0;
+    let allersRetours = 0;
+    for (const [, dayEntries] of byDate) {
+      jours += 1;
+      allersRetours += tripsForDay(dayEntries);
+    }
+    const kmTotal = allersRetours * oneWay * 2; // chaque A/R = 2 × distance aller
     if (oneWay > 0) totalKm += kmTotal;
-    perCms.push({ cms, jours, oneWay, isDefault, kmTotal });
+    perCms.push({ cms, jours, allersRetours, oneWay, isDefault, kmTotal });
   }
   perCms.sort((a, b) => b.kmTotal - a.kmTotal || b.jours - a.jours);
   return { perCms, totalKm };

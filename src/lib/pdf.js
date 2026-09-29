@@ -117,6 +117,7 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
     .map((r) => [
       r.cms,
       String(r.jours),
+      String(r.allersRetours),
       `${r.oneWay.toLocaleString("fr-FR")} km`,
       `${r.kmTotal.toLocaleString("fr-FR")} km`,
     ]);
@@ -124,9 +125,9 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
   if (hasCommute) {
     autoTable(doc, {
       startY: (doc.lastAutoTable?.finalY ?? 34) + 8,
-      head: [["Trajet domicile ↔ CMS", "Jours", "Aller", "Total A/R"]],
+      head: [["Trajet domicile ↔ CMS", "Jours", "A/R", "Aller", "Total"]],
       body: commuteRows,
-      foot: [["TOTAL km domicile ↔ CMS", "", "", `${totalKm.toLocaleString("fr-FR")} km`]],
+      foot: [["TOTAL km domicile ↔ CMS", "", "", "", `${totalKm.toLocaleString("fr-FR")} km`]],
       styles: { fontSize: 8, cellPadding: 2.5 },
       headStyles: { fillColor: TEAL, textColor: 255 },
       footStyles: { fillColor: [240, 253, 250], textColor: TEAL, fontStyle: "bold" },
@@ -140,7 +141,7 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
     `${totals.jours} journée${totals.jours > 1 ? "s" : ""} enregistrée${totals.jours > 1 ? "s" : ""} · généré le ${new Date().toLocaleDateString("fr-FR")} avec KyzenDay`,
   ];
   if (hasCommute) {
-    notes.push("Km domicile ↔ CMS : total indicatif (1 aller-retour par jour). Applique ton propre barème.");
+    notes.push("Km domicile ↔ CMS : 2 allers-retours pour matin+soir et coupés, sinon 1. Applique ton propre barème.");
   }
   doc.text(notes, 14, finalY + 10);
 
@@ -272,6 +273,7 @@ export async function exportYearPDF({ year, entries = [], transactions = [] }) {
     .map((r) => [
       r.cms,
       String(r.jours),
+      String(r.allersRetours),
       `${r.oneWay.toLocaleString("fr-FR")} km`,
       `${r.kmTotal.toLocaleString("fr-FR")} km`,
     ]);
@@ -279,9 +281,9 @@ export async function exportYearPDF({ year, entries = [], transactions = [] }) {
   if (hasCommute) {
     autoTable(doc, {
       startY: (doc.lastAutoTable?.finalY ?? 40) + 8,
-      head: [["Trajet domicile ↔ CMS", "Jours", "Aller", "Total A/R"]],
+      head: [["Trajet domicile ↔ CMS", "Jours", "A/R", "Aller", "Total"]],
       body: commuteRows,
-      foot: [["TOTAL km domicile ↔ CMS", "", "", `${totalKm.toLocaleString("fr-FR")} km`]],
+      foot: [["TOTAL km domicile ↔ CMS", "", "", "", `${totalKm.toLocaleString("fr-FR")} km`]],
       styles: { fontSize: 9, cellPadding: 2.5 },
       headStyles: { fillColor: TEAL, textColor: 255 },
       footStyles: { fillColor: [240, 253, 250], textColor: TEAL, fontStyle: "bold" },
@@ -296,7 +298,7 @@ export async function exportYearPDF({ year, entries = [], transactions = [] }) {
     notes.push("Les montants brut/net sont une ESTIMATION basée sur les taux que tu as saisis — pas des chiffres officiels.");
   }
   if (hasCommute) {
-    notes.push("Km domicile ↔ CMS : total indicatif (1 aller-retour par jour travaillé). Applique ton propre barème kilométrique.");
+    notes.push("Km domicile ↔ CMS : 2 allers-retours pour matin+soir et coupés, sinon 1. Applique ton propre barème kilométrique.");
   }
   notes.push(`Document récapitulatif pour tes archives — généré le ${new Date().toLocaleDateString("fr-FR")} avec KyzenDay.`);
   doc.text(notes, 14, finalY + 8);
