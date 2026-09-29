@@ -12,9 +12,14 @@ const MOIS = [
   "juillet", "août", "septembre", "octobre", "novembre", "décembre",
 ];
 
-// minuscules + sans accents, pour comparer facilement
+// minuscules + sans accents + apostrophes en espaces, pour comparer facilement
+// (ex. « aujourd'hui » → « aujourd hui », « j'ai » → « j ai »).
 function norm(s) {
-  return (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return (s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/['’]/g, " ");
 }
 
 function readLocal(key) {
@@ -37,6 +42,55 @@ function money(n, cur) {
   }
 }
 
+const pad2 = (n) => String(n).padStart(2, "0");
+const isoOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+// Repère une DATE PRÉCISE dans la question : « aujourd'hui », « hier »,
+// « avant-hier », « le 29/09 », « 29/09/2026 », « le 15 septembre ».
+// Renvoie la date au format ISO, ou null si aucune date précise.
+function parseDay(qn, now) {
+  if (/avant[ -]?hier/.test(qn)) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - 2);
+    return isoOf(d);
+  }
+  if (/\bhier\b/.test(qn)) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - 1);
+    return isoOf(d);
+  }
+  if (/aujourd ?hui|ce jour|ma journee d aujourd/.test(qn)) return isoOf(now);
+
+  // 29/09 ou 29/09/2026 (accepte / . -)
+  const slash = qn.match(/\b(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\b/);
+  if (slash) {
+    const day = Number(slash[1]);
+    const mon = Number(slash[2]);
+    let yr = slash[3] ? Number(slash[3]) : now.getFullYear();
+    if (yr < 100) yr += 2000;
+    if (day >= 1 && day <= 31 && mon >= 1 && mon <= 12) return `${yr}-${pad2(mon)}-${pad2(day)}`;
+  }
+
+  // 15 septembre / le 3 aout
+  for (let i = 0; i < 12; i++) {
+    const mm = qn.match(new RegExp(`\\b(\\d{1,2})\\s+${norm(MOIS[i])}\\b`));
+    if (mm) {
+      const day = Number(mm[1]);
+      const yrMatch = qn.match(/\b(20\d{2})\b/);
+      const yr = yrMatch ? Number(yrMatch[1]) : now.getFullYear();
+      if (day >= 1 && day <= 31) return `${yr}-${pad2(i + 1)}-${pad2(day)}`;
+    }
+  }
+
+  // « le 29 » seul → jour du mois en cours
+  const md = qn.match(/\ble (\d{1,2})\b/);
+  if (md) {
+    const day = Number(md[1]);
+    if (day >= 1 && day <= 31) return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(day)}`;
+  }
+  return null;
+}
+
 // -------- Détection de la période visée par la question --------
 function detectScope(qn) {
   const now = new Date(todayISO() + "T00:00:00");
@@ -44,6 +98,10 @@ function detectScope(qn) {
   const m = now.getMonth();
   const mk = (yr, mo) => `${yr}-${String(mo + 1).padStart(2, "0")}`;
   const yearMatch = qn.match(/\b(20\d{2})\b/);
+
+  // Date précise en priorité (le plus spécifique)
+  const day = parseDay(qn, now);
+  if (day) return { type: "day", date: day, label: `le ${formatDateLong(day)}` };
 
   if (/annee derniere|an dernier|annee passee/.test(qn)) {
     return { type: "year", year: y - 1, label: `en ${y - 1}` };
@@ -70,7 +128,9 @@ function detectScope(qn) {
 
 function inScope(dateStr, scope) {
   if (!dateStr) return false;
-  return scope.type === "year" ? dateStr.startsWith(`${scope.year}-`) : dateStr.startsWith(scope.key);
+  if (scope.type === "day") return dateStr === scope.date;
+  if (scope.type === "year") return dateStr.startsWith(`${scope.year}-`);
+  return dateStr.startsWith(scope.key);
 }
 
 // -------- Agrégations --------
@@ -131,7 +191,9 @@ function typesVises(qn) {
   if (/\bmatin/.test(qn)) out.push(TYPES_LIST[0]);
   if (/aprem|apres midi|apres-midi/.test(qn)) out.push(TYPES_LIST[1]);
   if (/\bsoir/.test(qn)) out.push(TYPES_LIST[2]);
-  if (/journee complete|journees completes|journee entiere/.test(qn)) out.push(TYPES_LIST[3]);
+  // « journée » / « journées » = le type Journée (complète). « jour » / « jours »
+  // (sans le « -née ») reste « jours travaillés » et n'est pas capté ici.
+  if (/journee/.test(qn)) out.push(TYPES_LIST[3]);
   if (/coupe|coupes/.test(qn)) out.push(TYPES_LIST[4]);
   return out;
 }
@@ -203,6 +265,32 @@ function reponseResume(scope, entries) {
   if (sect) lignes.push(`• Secteur principal : ${sect.name} (${formatHours(sect.heures)})`);
   const net = salaireNet(entries);
   if (net) lignes.push(`• Salaire net estimé : ${net}`);
+  return lignes.join("\n");
+}
+
+const TYPE_LABEL = {
+  matin: "matin",
+  journee: "après-midi",
+  soir: "soir",
+  journee_complete: "journée complète",
+  coupe: "coupé",
+};
+
+// Détail d'un jour précis : type réel du jour + chaque créneau saisi.
+function reponseJour(scope, entries) {
+  if (entries.length === 0) return `Tu n'as rien enregistré ${scope.label}.`;
+  const type = TYPE_LABEL[classifyDay(entries)] || "journée";
+  const h = sumHeures(entries);
+  const km = sumKm(entries);
+  const lignes = [`${scope.label} : ${type}, ${formatHours(h)}, ${km.toLocaleString("fr-FR")} km.`];
+  const tries = [...entries].sort((a, b) => ((a.debut || "") < (b.debut || "") ? -1 : 1));
+  for (const e of tries) {
+    const creneau = e.debut && e.fin ? `${e.debut}–${e.fin}` : "";
+    const deux = e.debut2 && e.fin2 ? ` puis ${e.debut2}–${e.fin2}` : "";
+    const emp = e.employeur ? ` · ${e.employeur}` : "";
+    const lieu = e.cms ? ` (${e.cms})` : "";
+    lignes.push(`• ${creneau}${deux}${emp}${lieu}`);
+  }
   return lignes.join("\n");
 }
 
@@ -348,8 +436,9 @@ export function answerQuestion(question, { entries = [], transactions = [], shif
     if (scoped.length === 0) return `Aucune journée enregistrée ${scope.label}.`;
     return `Tu as fait ${sumKm(scoped).toLocaleString("fr-FR")} km ${scope.label}.`;
   }
-  // Jours travaillés
-  if (/jour.*(travaill|bosse|taff)|combien.*jour|nombre de jour|jours? travailles?/.test(qn)) {
+  // Jours travaillés — on exige « jour » comme vrai mot (\b) pour ne pas
+  // capter le « jour » caché dans « aujourd'hui ».
+  if (/(combien|nombre).*\bjours?\b|\bjours?\b.*(travaill|bosse|taff)/.test(qn)) {
     if (scoped.length === 0) return `Tu n'as travaillé aucun jour ${scope.label}.`;
     const j = countUniqueDays(scoped);
     return `Tu as travaillé ${j} jour${j > 1 ? "s" : ""} ${scope.label}.`;
@@ -359,6 +448,9 @@ export function answerQuestion(question, { entries = [], transactions = [], shif
     if (scoped.length === 0) return `Aucune journée enregistrée ${scope.label}.`;
     return `Tu as travaillé ${formatHours(sumHeures(scoped))} ${scope.label}.`;
   }
+
+  // Question sur un jour précis sans métrique explicite : on décrit le jour.
+  if (scope.type === "day") return reponseJour(scope, scoped);
 
   return fallback();
 }
