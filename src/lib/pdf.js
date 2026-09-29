@@ -2,7 +2,7 @@ import { typeMeta } from "./constants";
 import { budgetTypeMeta } from "./budgetConstants";
 import { computeMinutes, countUniqueDays, formatDateShort, formatHours } from "./time";
 import { computeSalary } from "./salary";
-import { computeCommute, readDistances } from "./commute";
+import { computeCommute, computeEntryCommute, readDistances } from "./commute";
 
 const TEAL = [15, 118, 110]; // teal-700, couleur de marque
 
@@ -69,23 +69,30 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
   const label = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
   doc.text(`Relevé d'heures — ${label}`, 14, 26);
 
+  // Distance domicile↔CMS attribuée à chaque journée (colonne "Trajet dom.")
+  const { perEntry, totalKm } = computeEntryCommute(entries, readDistances());
+  const hasCommute = totalKm > 0;
+
   const rows = [...entries]
     .sort((a, b) => (a.date > b.date ? 1 : -1))
-    .map((e) => [
-      formatDateShort(e.date),
-      typeMeta(e.type).label,
-      formatPlage(e),
-      e.secteur || "Non défini",
-      e.poste || "—",
-      e.employeur || "—",
-      e.cms || "—",
-      `${(Number(e.km) || 0).toLocaleString("fr-FR")} km`,
-      formatHours(e.heures),
-    ]);
+    .map((e) => {
+      const trajet = perEntry.get(e.id) || 0;
+      return [
+        formatDateShort(e.date),
+        typeMeta(e.type).label,
+        formatPlage(e),
+        e.secteur || "Non défini",
+        e.employeur || "—",
+        e.cms || "—",
+        `${(Number(e.km) || 0).toLocaleString("fr-FR")} km`,
+        trajet > 0 ? `${trajet.toLocaleString("fr-FR")} km` : "—",
+        formatHours(e.heures),
+      ];
+    });
 
   autoTable(doc, {
     startY: 34,
-    head: [["Date", "Type", "Horaires", "Secteur", "Poste", "Employeur", "CMS", "Km", "Heures"]],
+    head: [["Date", "Type", "Horaires", "Secteur", "Employeur", "CMS", "Km", "Trajet dom.", "Heures"]],
     body: rows,
     foot: [
       [
@@ -94,9 +101,9 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
         "",
         "",
         "",
-        "",
         "TOTAL",
         `${totals.km.toLocaleString("fr-FR")} km`,
+        hasCommute ? `${totalKm.toLocaleString("fr-FR")} km` : "—",
         formatHours(totals.heures),
       ],
     ],
@@ -109,31 +116,6 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
     },
   });
 
-  // Trajets domicile ↔ CMS du mois (km déductibles) — distances connues
-  // pré-remplies automatiquement.
-  const { perCms, totalKm } = computeCommute(entries, readDistances());
-  const commuteRows = perCms
-    .filter((r) => r.oneWay > 0)
-    .map((r) => [
-      r.cms,
-      String(r.jours),
-      String(r.allersRetours),
-      `${r.oneWay.toLocaleString("fr-FR")} km`,
-      `${r.kmTotal.toLocaleString("fr-FR")} km`,
-    ]);
-  const hasCommute = commuteRows.length > 0;
-  if (hasCommute) {
-    autoTable(doc, {
-      startY: (doc.lastAutoTable?.finalY ?? 34) + 8,
-      head: [["Trajet domicile ↔ CMS", "Jours", "A/R", "Aller", "Total"]],
-      body: commuteRows,
-      foot: [["TOTAL km domicile ↔ CMS", "", "", "", `${totalKm.toLocaleString("fr-FR")} km`]],
-      styles: { fontSize: 8, cellPadding: 2.5 },
-      headStyles: { fillColor: TEAL, textColor: 255 },
-      footStyles: { fillColor: [240, 253, 250], textColor: TEAL, fontStyle: "bold" },
-    });
-  }
-
   const finalY = doc.lastAutoTable?.finalY ?? 34;
   doc.setFontSize(9);
   doc.setTextColor(150);
@@ -141,7 +123,7 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
     `${totals.jours} journée${totals.jours > 1 ? "s" : ""} enregistrée${totals.jours > 1 ? "s" : ""} · généré le ${new Date().toLocaleDateString("fr-FR")} avec KyzenDay`,
   ];
   if (hasCommute) {
-    notes.push("Km domicile ↔ CMS : 2 allers-retours pour matin+soir et coupés, sinon 1. Applique ton propre barème.");
+    notes.push("Trajet dom. = km domicile↔CMS aller-retour (2 A/R pour matin+soir et coupés, sinon 1). Applique ton propre barème.");
   }
   doc.text(notes, 14, finalY + 10);
 

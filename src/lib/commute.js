@@ -116,3 +116,43 @@ export function computeCommute(entries, distances) {
   perCms.sort((a, b) => b.kmTotal - a.kmTotal || b.jours - a.jours);
   return { perCms, totalKm };
 }
+
+// Km domicile↔CMS attribués PAR JOURNÉE (par saisie), pour les afficher en
+// colonne dans un relevé. Un créneau « continu » (après-midi juste après le
+// matin) ne rajoute pas de trajet ; un soir après une journée, ou un coupé,
+// en rajoute un. La somme de la colonne = total déductible.
+export function computeEntryCommute(entries, distances) {
+  const groups = new Map(); // "date__cms" -> saisies
+  for (const e of entries) {
+    const cms = (e.cms || "").trim();
+    const key = `${e.date}__${cms}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(e);
+  }
+
+  const perEntry = new Map(); // id -> km attribués
+  let totalKm = 0;
+  for (const [key, group] of groups) {
+    const cms = key.split("__")[1] || "";
+    const { km: oneWay } = cms ? resolveOneWay(cms, distances) : { km: 0 };
+    const sorted = [...group].sort((a, b) => ((a.debut || "") < (b.debut || "") ? -1 : 1));
+    let presenceJour = false; // a-t-on déjà un créneau de jour (matin/aprem) ?
+    for (const e of sorted) {
+      let trips;
+      if (e.type === "coupe") {
+        trips = 2; // deux services séparés
+      } else if (!presenceJour) {
+        trips = 1; // premier créneau du jour
+      } else if (e.type === "soir") {
+        trips = 1; // soir après une journée = retour maison puis re-trajet
+      } else {
+        trips = 0; // continu (aprem juste après le matin)
+      }
+      if (e.type !== "soir") presenceJour = true;
+      const km = trips * oneWay * 2;
+      perEntry.set(e.id, km);
+      if (oneWay > 0) totalKm += km;
+    }
+  }
+  return { perEntry, totalKm };
+}
