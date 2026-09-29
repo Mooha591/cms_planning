@@ -6,6 +6,7 @@ import { BudgetProvider } from "./context/BudgetContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import { PlanningProvider } from "./context/PlanningContext";
 import { LogosProvider } from "./context/LogosContext";
+import { DistancesProvider } from "./context/DistancesContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import Navbar from "./components/Navbar";
 import BottomNav from "./components/BottomNav";
@@ -66,6 +67,7 @@ function AuthGate() {
        <CurrencyProvider>
        <PlanningProvider>
         <LogosProvider>
+        <DistancesProvider>
         <div className="relative min-h-[100dvh] w-full text-left text-slate-900 dark:text-slate-100">
           {/* Dégradé de fond peint une seule fois (couche fixe) plutôt que
               repeint à chaque frame pendant le scroll */}
@@ -93,6 +95,7 @@ function AuthGate() {
           </Suspense>
           <BottomNav />
         </div>
+        </DistancesProvider>
         </LogosProvider>
        </PlanningProvider>
        </CurrencyProvider>

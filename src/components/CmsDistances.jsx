@@ -1,13 +1,14 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Home } from "lucide-react";
-import { computeCommute, defaultDistanceFor, readDistances, writeDistances } from "../lib/commute";
+import { computeCommute } from "../lib/commute";
+import { useDistances } from "../context/DistancesContext";
 
 // Tableau des trajets domicile ↔ CMS de l'année : l'utilisateur saisit la
 // distance ALLER de chaque CMS, on affiche les jours travaillés et le total
-// aller-retour — utile pour les km déductibles aux impôts. La distance est
-// mémorisée sur l'appareil (par nom de CMS).
+// aller-retour — utile pour les km déductibles aux impôts. Les distances sont
+// enregistrées sur le COMPTE (propres à chaque personne).
 export default function CmsDistances({ entries }) {
-  const [distances, setDistances] = useState(readDistances);
+  const { distances, setDistance } = useDistances();
   const { perCms, totalKm } = useMemo(
     () => computeCommute(entries, distances),
     [entries, distances],
@@ -15,23 +16,15 @@ export default function CmsDistances({ entries }) {
 
   if (perCms.length === 0) return null;
 
-  function setDist(cms, value) {
-    setDistances((d) => {
-      const next = { ...d, [cms]: value };
-      writeDistances(next);
-      return next;
-    });
-  }
-
   return (
     <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <h2 className="mb-1 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
         <Home size={14} /> Trajets domicile ↔ CMS
       </h2>
       <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
-        Distance aller (domicile → CMS) — certaines sont pré-remplies
-        automatiquement. Allers-retours comptés selon le type de journée :
-        matin+soir ou coupé = 2, sinon 1.
+        Saisis la distance aller (domicile → CMS) — propre à ton compte.
+        Allers-retours comptés selon le type de journée : matin+soir ou
+        coupé = 2, sinon 1.
       </p>
 
       <div className="overflow-x-auto">
@@ -63,25 +56,14 @@ export default function CmsDistances({ entries }) {
                     inputMode="decimal"
                     min="0"
                     step="0.5"
-                    placeholder={defaultDistanceFor(r.cms) != null ? String(defaultDistanceFor(r.cms)) : "—"}
+                    placeholder="—"
                     value={distances[r.cms] ?? ""}
-                    onChange={(e) => setDist(r.cms, e.target.value)}
+                    onChange={(e) => setDistance(r.cms, e.target.value)}
                     className="input h-7 w-16 px-1.5 text-right text-xs"
                   />
                 </td>
                 <td className="py-1.5 text-right font-medium tabular-nums text-teal-700 dark:text-teal-400">
-                  {r.kmTotal > 0 ? (
-                    <>
-                      {r.kmTotal.toLocaleString("fr-FR")} km
-                      {r.isDefault && (
-                        <span className="ml-1 text-[10px] font-normal text-slate-400 dark:text-slate-500">
-                          auto
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    "—"
-                  )}
+                  {r.kmTotal > 0 ? `${r.kmTotal.toLocaleString("fr-FR")} km` : "—"}
                 </td>
               </tr>
             ))}

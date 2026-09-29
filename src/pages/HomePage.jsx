@@ -19,6 +19,7 @@ import { useAuth } from "../context/AuthContext";
 import { useBudget } from "../context/BudgetContext";
 import { usePlanning } from "../context/PlanningContext";
 import { useAgencyLogos } from "../context/LogosContext";
+import { useDistances } from "../context/DistancesContext";
 import MonthSummary from "../components/MonthSummary";
 import MonthInsight from "../components/MonthInsight";
 import SecteurBreakdown from "../components/SecteurBreakdown";
@@ -46,6 +47,7 @@ export default function HomePage() {
   const { transactions, importTransactions } = useBudget();
   const { shifts, importShifts } = usePlanning();
   const { logos, importLogos } = useAgencyLogos();
+  const { distances } = useDistances();
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef(null);
@@ -347,7 +349,7 @@ export default function HomePage() {
                 </button>
                 <button
                   onClick={() =>
-                    exportMonthPDF({ entries: monthEntries, totals, monthLabel, monthKey })
+                    exportMonthPDF({ entries: monthEntries, totals, monthLabel, monthKey, distances })
                   }
                   className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
                 >

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEntries } from "../context/EntriesContext";
 import { useBudget } from "../context/BudgetContext";
+import { useDistances } from "../context/DistancesContext";
 import Stat from "../components/Stat";
 import SecteurBreakdown from "../components/SecteurBreakdown";
 import EmployeurBreakdown from "../components/EmployeurBreakdown";
@@ -34,6 +35,7 @@ const MOIS_LONG = [
 export default function HistoriquePage() {
   const { entries, loading } = useEntries();
   const { transactions } = useBudget();
+  const { distances } = useDistances();
   const nowYear = new Date().getFullYear();
   const [year, setYear] = useState(nowYear);
 
@@ -145,7 +147,7 @@ export default function HistoriquePage() {
               <Download size={14} /> CSV {year}
             </button>
             <button
-              onClick={() => exportYearPDF({ year, entries, transactions })}
+              onClick={() => exportYearPDF({ year, entries, transactions, distances })}
               className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
             >
               <FileText size={14} /> Récap {year}

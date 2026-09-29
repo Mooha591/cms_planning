@@ -2,7 +2,7 @@ import { typeMeta } from "./constants";
 import { budgetTypeMeta } from "./budgetConstants";
 import { computeMinutes, countUniqueDays, formatDateShort, formatHours } from "./time";
 import { computeSalary } from "./salary";
-import { computeCommute, computeEntryCommute, readDistances } from "./commute";
+import { computeCommute, computeEntryCommute } from "./commute";
 
 const TEAL = [15, 118, 110]; // teal-700, couleur de marque
 
@@ -50,7 +50,7 @@ function totalsByCurrency(transactions) {
 // Construit et télécharge un relevé d'heures mensuel en PDF, mis en page
 // (en-tête, tableau des journées, total). jsPDF (~250 Ko) n'est chargé
 // qu'au moment où l'export est vraiment demandé, pas au chargement de l'app.
-export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) {
+export async function exportMonthPDF({ entries, totals, monthLabel, monthKey, distances = {} }) {
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
     import("jspdf"),
     import("jspdf-autotable"),
@@ -70,7 +70,7 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
   doc.text(`Relevé d'heures — ${label}`, 14, 26);
 
   // Distance domicile↔CMS attribuée à chaque journée (colonne "Trajet dom.")
-  const { perEntry, totalKm } = computeEntryCommute(entries, readDistances());
+  const { perEntry, totalKm } = computeEntryCommute(entries, distances);
   const hasCommute = totalKm > 0;
 
   const rows = [...entries]
@@ -134,7 +134,7 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
 // détail mois par mois, détail par employeur avec estimation de paie, et
 // bilan budget par devise. Ce n'est pas un document officiel : les montants
 // brut/net sont des estimations basées sur les taux saisis par l'utilisateur.
-export async function exportYearPDF({ year, entries = [], transactions = [] }) {
+export async function exportYearPDF({ year, entries = [], transactions = [], distances = {} }) {
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
     import("jspdf"),
     import("jspdf-autotable"),
@@ -249,7 +249,7 @@ export async function exportYearPDF({ year, entries = [], transactions = [] }) {
 
   // Trajets domicile ↔ CMS (km déductibles) — seulement les CMS avec une
   // distance renseignée
-  const { perCms, totalKm } = computeCommute(yearEntries, readDistances());
+  const { perCms, totalKm } = computeCommute(yearEntries, distances);
   const commuteRows = perCms
     .filter((r) => r.oneWay > 0)
     .map((r) => [
