@@ -5,7 +5,7 @@ export const STORAGE_KEY = "crs:tournees";
 export const PAUSE_CHIPS = [0, 30, 45, 60, 90];
 
 // Secteurs auxquels une journée/mission peut être rattachée
-export const SECTEURS = ["La Côte", "APREMADOL", "APROMAD", "ASPMAD", "ABSMAD", "Autre"];
+export const SECTEURS = ["La Côte", "APREMADOL", "APROMAD", "ASPMAD", "Autre"];
 
 // CMS officiels par secteur (fournis par l'utilisateur). Affichés dans une
 // liste déroulante. « Autre » et les secteurs absents d'ici → saisie libre,
