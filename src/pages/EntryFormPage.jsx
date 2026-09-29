@@ -26,7 +26,7 @@ import {
   formatHours,
   todayISO,
 } from "../lib/time";
-import { CMS_BY_SECTEUR, EMPLOYEURS, POSTES, SECTEURS } from "../lib/constants";
+import { EMPLOYEURS, POSTES, SECTEURS } from "../lib/constants";
 
 const emptyForm = {
   date: todayISO(),
@@ -143,10 +143,8 @@ export default function EntryFormPage() {
   const [autreEmployeur, setAutreEmployeur] = useState(
     () => !!form.employeur && !EMPLOYEURS.includes(form.employeur),
   );
-  // "Autre…" pour le CMS : le CMS saisi n'est pas dans la liste du secteur
-  const [autreCms, setAutreCms] = useState(
-    () => !!form.cms && !(CMS_BY_SECTEUR[form.secteur] || []).includes(form.cms),
-  );
+  // "Autre…" pour le CMS : on saisit un CMS pas encore vu pour ce secteur.
+  const [autreCms, setAutreCms] = useState(false);
 
   // Changer de secteur remet à zéro le CMS (il dépend du secteur choisi).
   function handleSecteurChange(v) {
@@ -254,8 +252,22 @@ export default function EntryFormPage() {
     Autre: { label: "Lieu", ph: "ex : hôpital, domicile…" },
   }[form.poste] || { label: "Lieu", ph: "" };
 
-  // CMS proposés pour le secteur choisi (liste déroulante). Vide → saisie libre.
-  const cmsOptions = CMS_BY_SECTEUR[form.secteur] || [];
+  // CMS proposés pour le secteur choisi : construits à partir des CMS déjà
+  // saisis pour ce secteur (aucune liste devinée). Vide → saisie libre.
+  const cmsBySecteur = useMemo(() => {
+    const map = {};
+    for (const e of entries) {
+      const sec = e.secteur;
+      const c = (e.cms || "").trim();
+      if (!sec || !c) continue;
+      (map[sec] ||= new Set()).add(c);
+    }
+    return map;
+  }, [entries]);
+  const cmsOptions = useMemo(
+    () => [...(cmsBySecteur[form.secteur] || [])].sort((a, b) => a.localeCompare(b, "fr")),
+    [cmsBySecteur, form.secteur],
+  );
 
   function setField(k, v) {
     setForm((f) => ({ ...f, [k]: v }));
