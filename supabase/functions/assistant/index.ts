@@ -98,23 +98,46 @@ Deno.serve(async (req: Request) => {
       ],
     });
 
-    const geminiRes = await fetch(GEMINI_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents,
-        generationConfig: { temperature: 0.3, maxOutputTokens: 800 },
-      }),
+    const requestBody = JSON.stringify({
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents,
+      generationConfig: { temperature: 0.3, maxOutputTokens: 800 },
     });
 
-    if (!geminiRes.ok || !geminiRes.body) {
-      const detail = geminiRes.body ? await geminiRes.text() : "";
-      // 429 = quota du tier gratuit atteint (rare, mais on le dit clairement).
-      if (geminiRes.status === 429) {
+    // Le tier gratuit renvoie parfois un 503 « modèle très demandé » passager,
+    // ou un 500 : on réessaie quelques fois avec une courte attente avant
+    // d'abandonner, pour éviter de montrer une erreur pour un simple pic.
+    let geminiRes: Response | null = null;
+    const MAX_ATTEMPTS = 3;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      geminiRes = await fetch(GEMINI_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+        body: requestBody,
+      });
+      if (geminiRes.ok && geminiRes.body) break;
+      const retryable = geminiRes.status === 503 || geminiRes.status === 500;
+      if (retryable && attempt < MAX_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, 600 * attempt));
+        continue;
+      }
+      break;
+    }
+
+    if (!geminiRes || !geminiRes.ok || !geminiRes.body) {
+      const detail = geminiRes?.body ? await geminiRes.text() : "";
+      const status = geminiRes?.status ?? 0;
+      // 429 = quota du tier gratuit atteint ; 503 = modèle momentanément surchargé.
+      if (status === 429) {
         return json({ error: "Trop de questions d'un coup — réessaie dans une minute." }, 429);
       }
-      return json({ error: `Erreur de l'assistant (${geminiRes.status}).`, detail }, 502);
+      if (status === 503) {
+        return json(
+          { error: "Le modèle IA est très demandé là tout de suite — réessaie dans quelques secondes.", detail },
+          503,
+        );
+      }
+      return json({ error: `Erreur de l'assistant (${status}).`, detail }, 502);
     }
 
     // Relaie le flux SSE de Gemini au navigateur en texte brut : on extrait

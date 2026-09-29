@@ -70,6 +70,7 @@ export default function AssistantPage() {
         try {
           const body = await res.json();
           if (body?.error) msg = body.error;
+          if (body?.detail) msg += ` — ${typeof body.detail === "string" ? body.detail.slice(0, 400) : ""}`;
         } catch {
           // corps illisible : on garde le message générique
         }
