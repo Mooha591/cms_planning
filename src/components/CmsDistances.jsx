@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Home } from "lucide-react";
-import { computeCommute, readDistances, writeDistances } from "../lib/commute";
+import { computeCommute, defaultDistanceFor, readDistances, writeDistances } from "../lib/commute";
 
 // Tableau des trajets domicile ↔ CMS de l'année : l'utilisateur saisit la
 // distance ALLER de chaque CMS, on affiche les jours travaillés et le total
@@ -29,8 +29,8 @@ export default function CmsDistances({ entries }) {
         <Home size={14} /> Trajets domicile ↔ CMS
       </h2>
       <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
-        Saisis la distance aller (domicile → CMS). Le total compte un
-        aller-retour par jour travaillé.
+        Distance aller (domicile → CMS) — certaines sont pré-remplies
+        automatiquement. Le total compte un aller-retour par jour travaillé.
       </p>
 
       <div className="overflow-x-auto">
@@ -58,14 +58,25 @@ export default function CmsDistances({ entries }) {
                     inputMode="decimal"
                     min="0"
                     step="0.5"
-                    placeholder="—"
+                    placeholder={defaultDistanceFor(r.cms) != null ? String(defaultDistanceFor(r.cms)) : "—"}
                     value={distances[r.cms] ?? ""}
                     onChange={(e) => setDist(r.cms, e.target.value)}
                     className="input h-7 w-16 px-1.5 text-right text-xs"
                   />
                 </td>
                 <td className="py-1.5 text-right font-medium tabular-nums text-teal-700 dark:text-teal-400">
-                  {r.kmTotal > 0 ? `${r.kmTotal.toLocaleString("fr-FR")} km` : "—"}
+                  {r.kmTotal > 0 ? (
+                    <>
+                      {r.kmTotal.toLocaleString("fr-FR")} km
+                      {r.isDefault && (
+                        <span className="ml-1 text-[10px] font-normal text-slate-400 dark:text-slate-500">
+                          auto
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    "—"
+                  )}
                 </td>
               </tr>
             ))}
