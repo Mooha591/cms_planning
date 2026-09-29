@@ -5,19 +5,6 @@ import { useBudget } from "../context/BudgetContext";
 import { usePlanning } from "../context/PlanningContext";
 import { answerQuestion } from "../lib/localAssistant";
 
-const SUGGESTIONS = [
-  "Fais-moi le résumé de mon mois.",
-  "Combien d'heures ce mois-ci ?",
-  "Répartition par type",
-  "Combien de matins ?",
-  "Combien de soirs ?",
-  "Combien de coupés ?",
-  "Combien de journées complètes ?",
-  "Combien de km cette année ?",
-  "Quel employeur m'a fait travailler le plus ?",
-  "Mes prochaines missions",
-];
-
 // Assistant 100% local : les réponses sont calculées dans l'app à partir des
 // données (heures, budget, planning) — aucun appel réseau, aucune IA externe.
 // Instantané, gratuit, illimité, fonctionne hors-ligne.
@@ -64,23 +51,9 @@ export default function AssistantPage() {
 
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto pb-4">
         {messages.length === 0 && (
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              Salut 👋 Je réponds instantanément à partir de tes données (heures,
-              km, budget, planning), même hors-ligne. Essaie une des questions
-              ci-dessous ou écris la tienne.
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => ask(s)}
-                  className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-700 transition hover:bg-teal-100 dark:border-teal-900 dark:bg-teal-950/30 dark:text-teal-400 dark:hover:bg-teal-900/40"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            Salut 👋 Je réponds instantanément à partir de tes données (heures,
+            km, budget, planning), même hors-ligne. Écris ta question.
           </div>
         )}
 
