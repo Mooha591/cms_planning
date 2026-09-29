@@ -6,11 +6,16 @@ import { usePlanning } from "../context/PlanningContext";
 import { answerQuestion } from "../lib/localAssistant";
 
 const SUGGESTIONS = [
-  "Combien d'heures ai-je travaillé ce mois-ci ?",
   "Fais-moi le résumé de mon mois.",
-  "Quels sont mes prochains jours de repos ?",
-  "Combien de km ai-je fait cette année ?",
+  "Combien d'heures ce mois-ci ?",
+  "Répartition par type",
+  "Combien de matins ?",
+  "Combien de soirs ?",
+  "Combien de coupés ?",
+  "Combien de journées complètes ?",
+  "Combien de km cette année ?",
   "Quel employeur m'a fait travailler le plus ?",
+  "Mes prochaines missions",
 ];
 
 // Assistant 100% local : les réponses sont calculées dans l'app à partir des

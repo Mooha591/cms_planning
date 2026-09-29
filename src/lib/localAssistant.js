@@ -81,6 +81,44 @@ function sumKm(entries) {
   return entries.reduce((a, e) => a + (Number(e.km) || 0), 0);
 }
 
+// Types de service, dans l'ordre d'une journée. `id` correspond au champ
+// `type` stocké sur chaque journée (cf. lib/constants.js).
+const TYPES_LIST = [
+  { id: "matin", sing: "matin", plur: "matins" },
+  { id: "journee", sing: "après-midi", plur: "après-midis" },
+  { id: "soir", sing: "soir", plur: "soirs" },
+  { id: "journee_complete", sing: "journée complète", plur: "journées complètes" },
+  { id: "coupe", sing: "coupé", plur: "coupés" },
+];
+
+function countType(entries, id) {
+  return entries.filter((e) => e.type === id).length;
+}
+
+// Quels types de service la question vise-t-elle ? (qn est déjà sans accents)
+function typesVises(qn) {
+  const out = [];
+  if (/\bmatin/.test(qn)) out.push(TYPES_LIST[0]);
+  if (/aprem|apres midi|apres-midi/.test(qn)) out.push(TYPES_LIST[1]);
+  if (/\bsoir/.test(qn)) out.push(TYPES_LIST[2]);
+  if (/journee complete|journees completes|journee entiere/.test(qn)) out.push(TYPES_LIST[3]);
+  if (/coupe|coupes/.test(qn)) out.push(TYPES_LIST[4]);
+  return out;
+}
+
+function reponseTypes(scope, entries, which) {
+  if (entries.length === 0) return `Aucune journée enregistrée ${scope.label}.`;
+  const fmt = (t) => {
+    const n = countType(entries, t.id);
+    return `${n} ${n > 1 ? t.plur : t.sing}`;
+  };
+  if (which === "all") {
+    const lignes = TYPES_LIST.map((t) => `• ${fmt(t)}`);
+    return `Répartition par type ${scope.label} :\n${lignes.join("\n")}`;
+  }
+  return `Tu as fait ${which.map(fmt).join(", ")} ${scope.label}.`;
+}
+
 function topBy(entries, field) {
   const map = new Map();
   for (const e of entries) {
@@ -216,6 +254,7 @@ function fallback() {
     "Je n'ai pas bien compris 🤔 Je peux te répondre sur :",
     "• tes heures (« combien d'heures ce mois-ci ? »)",
     "• tes jours travaillés",
+    "• par type de service (« combien de matins ? », « combien de coupés ? »)",
     "• tes km",
     "• un résumé du mois (« fais-moi le résumé »)",
     "• ton budget (« mes dépenses », « coût voiture »)",
@@ -241,6 +280,15 @@ export function answerQuestion(question, { entries = [], transactions = [], shif
   // Résumé / bilan
   if (/resume|bilan|recap|synthese|le point|fais.*(mois|semaine)|comment.*(mois|va)/.test(qn)) {
     return reponseResume(scope, scoped);
+  }
+  // Répartition par type (tous les types d'un coup)
+  if (/repartition|par type|chaque type|types de|quels types/.test(qn)) {
+    return reponseTypes(scope, scoped, "all");
+  }
+  // Comptage d'un ou plusieurs types précis (matins, soirs, coupés…)
+  const typesDemandes = typesVises(qn);
+  if (typesDemandes.length > 0) {
+    return reponseTypes(scope, scoped, typesDemandes);
   }
   // Employeur principal
   if (/(employeur|agence|boite|patron).*(plus|top|principal)|quel employeur|qui.*(fait travaill|employe le plus)/.test(qn)) {
