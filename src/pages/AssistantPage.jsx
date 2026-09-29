@@ -29,7 +29,7 @@ export default function AssistantPage() {
   }
 
   return (
-    <div className="mx-auto flex h-[100dvh] max-w-xl flex-col px-4 pt-6">
+    <div className="mx-auto max-w-xl px-4 pb-44 pt-6">
       <header className="mb-4 flex items-center gap-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-800 text-white shadow-sm dark:bg-teal-700">
           <Sparkles size={20} />
@@ -44,7 +44,7 @@ export default function AssistantPage() {
         </div>
       </header>
 
-      <div className="flex-1 space-y-3 pb-4">
+      <div className="space-y-3">
         {messages.length === 0 && (
           <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
             Salut 👋 Je réponds instantanément à partir de tes données (heures,
@@ -70,34 +70,38 @@ export default function AssistantPage() {
         ))}
       </div>
 
+      {/* Barre de saisie fixée juste au-dessus de la barre de navigation du
+          bas, pour rester toujours visible sans passer derrière le menu. */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           ask(input);
         }}
-        className="sticky bottom-0 flex items-end gap-2 border-t border-slate-200 bg-white/80 py-3 backdrop-blur pb-[calc(0.75rem+env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-slate-950/80"
+        className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-10 border-t border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90"
       >
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              ask(input);
-            }
-          }}
-          rows={1}
-          placeholder="Écris ta question…"
-          className="input max-h-32 flex-1 resize-none"
-        />
-        <button
-          type="submit"
-          disabled={!input.trim()}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-700 text-white transition hover:bg-teal-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
-          aria-label="Envoyer"
-        >
-          <Send size={18} />
-        </button>
+        <div className="mx-auto flex max-w-xl items-end gap-2 px-4 py-2.5">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                ask(input);
+              }
+            }}
+            rows={1}
+            placeholder="Écris ta question…"
+            className="input max-h-32 flex-1 resize-none"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-700 text-white transition hover:bg-teal-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
+            aria-label="Envoyer"
+          >
+            <Send size={18} />
+          </button>
+        </div>
       </form>
     </div>
   );
