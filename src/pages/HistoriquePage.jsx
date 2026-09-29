@@ -6,9 +6,12 @@ import {
   Clock,
   Car,
   CalendarDays,
+  Download,
+  FileText,
   Trophy,
 } from "lucide-react";
 import { useEntries } from "../context/EntriesContext";
+import { useBudget } from "../context/BudgetContext";
 import Stat from "../components/Stat";
 import SecteurBreakdown from "../components/SecteurBreakdown";
 import EmployeurBreakdown from "../components/EmployeurBreakdown";
@@ -16,6 +19,8 @@ import SalaryEstimate from "../components/SalaryEstimate";
 import KmEstimate from "../components/KmEstimate";
 import YearHeatmap from "../components/YearHeatmap";
 import { computeMinutes, countUniqueDays, formatHours } from "../lib/time";
+import { exportEntriesCSV } from "../lib/csv";
+import { exportYearPDF } from "../lib/pdf";
 
 const MOIS_INIT = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 const MOIS_LONG = [
@@ -27,6 +32,7 @@ const MOIS_LONG = [
 // mois, carte de l'année, records, répartitions.
 export default function HistoriquePage() {
   const { entries, loading } = useEntries();
+  const { transactions } = useBudget();
   const nowYear = new Date().getFullYear();
   const [year, setYear] = useState(nowYear);
 
@@ -127,6 +133,24 @@ export default function HistoriquePage() {
         </div>
       ) : (
         <>
+          {/* Export récap annuel (pour archives / déclaration) */}
+          <div className="mb-6 flex items-center justify-end gap-2">
+            <button
+              onClick={() =>
+                exportEntriesCSV(yearEntries, { km: stats.km, heures: stats.heures }, String(year))
+              }
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:border-teal-400 hover:text-teal-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-teal-500 dark:hover:text-teal-400"
+            >
+              <Download size={14} /> CSV {year}
+            </button>
+            <button
+              onClick={() => exportYearPDF({ year, entries, transactions })}
+              className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
+            >
+              <FileText size={14} /> Récap {year}
+            </button>
+          </div>
+
           {/* Évolution mois par mois */}
           <section className="mb-6 space-y-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div>

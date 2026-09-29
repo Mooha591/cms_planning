@@ -1,8 +1,36 @@
 import { typeMeta } from "./constants";
 import { budgetTypeMeta } from "./budgetConstants";
-import { formatDateShort, formatHours } from "./time";
+import { computeMinutes, countUniqueDays, formatDateShort, formatHours } from "./time";
+import { computeSalary } from "./salary";
 
 const TEAL = [15, 118, 110]; // teal-700, couleur de marque
+
+const MOIS_LONG = [
+  "janvier", "février", "mars", "avril", "mai", "juin",
+  "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+];
+
+function readLocal(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function readRatesMap() {
+  try {
+    return JSON.parse(localStorage.getItem("kyzenday:taux-par-employeur") || "{}");
+  } catch {
+    return {};
+  }
+}
+function money(n, cur) {
+  try {
+    return new Intl.NumberFormat("fr-FR", { style: "currency", currency: cur, maximumFractionDigits: 2 }).format(n);
+  } catch {
+    return `${Math.round(n)} ${cur}`;
+  }
+}
 
 // Sous-totaux par devise (sans conversion), pour le pied du tableau
 function totalsByCurrency(transactions) {
@@ -92,6 +120,136 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
   );
 
   doc.save(`kyzenday-releve-${monthKey}.pdf`);
+}
+
+// Récapitulatif ANNUEL (pour archives / déclaration) : totaux de l'année,
+// détail mois par mois, détail par employeur avec estimation de paie, et
+// bilan budget par devise. Ce n'est pas un document officiel : les montants
+// brut/net sont des estimations basées sur les taux saisis par l'utilisateur.
+export async function exportYearPDF({ year, entries = [], transactions = [] }) {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+
+  const yearEntries = entries.filter((e) => (e.date || "").startsWith(`${year}-`));
+  const yearTx = transactions.filter((t) => (t.date || "").startsWith(`${year}-`));
+
+  const doc = new jsPDF();
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(...TEAL);
+  doc.text("KyzenDay", 14, 18);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(90);
+  doc.text(`Récapitulatif annuel — ${year}`, 14, 26);
+
+  const totHeures = yearEntries.reduce((a, e) => a + (Number(e.heures) || 0), 0);
+  const totKm = yearEntries.reduce((a, e) => a + (Number(e.km) || 0), 0);
+  const totJours = countUniqueDays(yearEntries);
+  doc.setFontSize(10);
+  doc.setTextColor(60);
+  doc.text(
+    `${totJours} jour${totJours > 1 ? "s" : ""} travaillé${totJours > 1 ? "s" : ""}  ·  ${formatHours(totHeures)}  ·  ${totKm.toLocaleString("fr-FR")} km`,
+    14,
+    33,
+  );
+
+  // Détail mois par mois (mois sans activité omis)
+  const monthlyRows = [];
+  for (let m = 0; m < 12; m++) {
+    const key = `${year}-${String(m + 1).padStart(2, "0")}`;
+    const me = yearEntries.filter((e) => e.date.startsWith(key));
+    if (me.length === 0) continue;
+    monthlyRows.push([
+      MOIS_LONG[m].charAt(0).toUpperCase() + MOIS_LONG[m].slice(1),
+      String(countUniqueDays(me)),
+      formatHours(me.reduce((a, e) => a + (Number(e.heures) || 0), 0)),
+      `${me.reduce((a, e) => a + (Number(e.km) || 0), 0).toLocaleString("fr-FR")} km`,
+    ]);
+  }
+  autoTable(doc, {
+    startY: 40,
+    head: [["Mois", "Jours", "Heures", "Km"]],
+    body: monthlyRows,
+    foot: [["TOTAL", String(totJours), formatHours(totHeures), `${totKm.toLocaleString("fr-FR")} km`]],
+    styles: { fontSize: 9, cellPadding: 2.5 },
+    headStyles: { fillColor: TEAL, textColor: 255 },
+    footStyles: { fillColor: [240, 253, 250], textColor: TEAL, fontStyle: "bold" },
+  });
+
+  // Détail par employeur (+ estimation de paie si un taux est configuré)
+  const globalTaux = readLocal("kyzenday:taux-horaire");
+  const charges = readLocal("kyzenday:taux-charges") || "15";
+  const cur = readLocal("kyzenday:currency") || "EUR";
+  const perEmp = readRatesMap();
+  const anyRate = !!globalTaux || Object.keys(perEmp).length > 0;
+
+  const byEmp = new Map();
+  for (const e of yearEntries) {
+    if (!e.employeur) continue;
+    const acc = byEmp.get(e.employeur) || { entries: [], heures: 0, km: 0, minutes: 0 };
+    acc.entries.push(e);
+    acc.heures += Number(e.heures) || 0;
+    acc.km += Number(e.km) || 0;
+    acc.minutes += computeMinutes(e);
+    byEmp.set(e.employeur, acc);
+  }
+  const empRows = [...byEmp.entries()]
+    .sort((a, b) => b[1].heures - a[1].heures)
+    .map(([emp, t]) => {
+      const base = [emp, String(countUniqueDays(t.entries)), formatHours(t.heures), `${t.km.toLocaleString("fr-FR")} km`];
+      if (anyRate) {
+        const taux = perEmp[emp] || globalTaux || "";
+        if (taux) {
+          const { brut, net } = computeSalary(t.minutes / 60, taux, charges);
+          base.push(money(brut, cur), money(net, cur));
+        } else {
+          base.push("—", "—");
+        }
+      }
+      return base;
+    });
+
+  if (empRows.length > 0) {
+    autoTable(doc, {
+      startY: (doc.lastAutoTable?.finalY ?? 40) + 8,
+      head: [anyRate ? ["Employeur", "Jours", "Heures", "Km", "Brut est.", "Net est."] : ["Employeur", "Jours", "Heures", "Km"]],
+      body: empRows,
+      styles: { fontSize: 9, cellPadding: 2.5 },
+      headStyles: { fillColor: TEAL, textColor: 255 },
+    });
+  }
+
+  // Bilan budget de l'année, par devise (sans conversion)
+  if (yearTx.length > 0) {
+    const budgetRows = totalsByCurrency(yearTx).map(([code, v]) => [
+      code,
+      `${v.revenus.toLocaleString("fr-FR", { minimumFractionDigits: 2 })}`,
+      `${v.depenses.toLocaleString("fr-FR", { minimumFractionDigits: 2 })}`,
+      `${(v.revenus - v.depenses).toLocaleString("fr-FR", { minimumFractionDigits: 2 })}`,
+    ]);
+    autoTable(doc, {
+      startY: (doc.lastAutoTable?.finalY ?? 40) + 8,
+      head: [["Budget — devise", "Revenus", "Dépenses", "Solde"]],
+      body: budgetRows,
+      styles: { fontSize: 9, cellPadding: 2.5 },
+      headStyles: { fillColor: TEAL, textColor: 255 },
+    });
+  }
+
+  const finalY = doc.lastAutoTable?.finalY ?? 40;
+  doc.setFontSize(8);
+  doc.setTextColor(150);
+  const notes = [];
+  if (anyRate) {
+    notes.push("Les montants brut/net sont une ESTIMATION basée sur les taux que tu as saisis — pas des chiffres officiels.");
+  }
+  notes.push(`Document récapitulatif pour tes archives — généré le ${new Date().toLocaleDateString("fr-FR")} avec KyzenDay.`);
+  doc.text(notes, 14, finalY + 8);
+
+  doc.save(`kyzenday-recap-${year}.pdf`);
 }
 
 // "08:00 – 12:00" ou, quand il y a deux créneaux (coupé, ou journée
