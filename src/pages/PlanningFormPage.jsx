@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Check, Clock, MapPin, Plus } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Clock, MapPin, Plus } from "lucide-react";
 import { usePlanning } from "../context/PlanningContext";
 import { useEntries } from "../context/EntriesContext";
 import Field from "../components/Field";
 import TypeSelector from "../components/TypeSelector";
 import TimeInput from "../components/TimeInput";
-import { durMin, formatDuree, todayISO } from "../lib/time";
+import { durMin, formatDateLong, formatDuree, todayISO } from "../lib/time";
+import { findOverlaps } from "../lib/overlap";
 import { EMPLOYEURS, POSTES, SECTEURS } from "../lib/constants";
 
 const emptyForm = {
@@ -27,7 +28,7 @@ export default function PlanningFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { upsert, getById } = usePlanning();
+  const { upsert, getById, shifts } = usePlanning();
   const { entries } = useEntries();
   const editing = Boolean(id);
   const duplicateFrom = location.state?.duplicateFrom;
@@ -80,6 +81,20 @@ export default function PlanningFormPage() {
   );
 
   const duree = durMin(form.debut, form.fin);
+
+  // Chevauchements : la mission en cours recoupe-t-elle une journée déjà
+  // saisie ou une autre mission planifiée le même jour ? (alerte, non bloquant)
+  const overlaps = useMemo(() => {
+    if (!form.date || !form.debut || !form.fin) return [];
+    const missions = shifts
+      .filter((s) => s.id !== id)
+      .map((s) => ({ ...s, _kind: "mission" }));
+    const journees = entries.map((e) => ({ ...e, _kind: "journée" }));
+    return findOverlaps(
+      { date: form.date, debut: form.debut, fin: form.fin },
+      [...missions, ...journees],
+    );
+  }, [form.date, form.debut, form.fin, shifts, entries, id]);
 
   function setField(k, v) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -160,6 +175,31 @@ export default function PlanningFormPage() {
           <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
             <Clock size={13} /> Durée prévue : {formatDuree(duree)}
           </p>
+        )}
+
+        {overlaps.length > 0 && (
+          <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20">
+            <p className="flex items-center gap-1.5 text-sm font-medium text-amber-800 dark:text-amber-300">
+              <AlertTriangle size={15} /> Chevauchement d'horaires
+            </p>
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+              Ce créneau recoupe{" "}
+              {overlaps.length > 1 ? "des éléments déjà prévus" : "un élément déjà prévu"} le{" "}
+              {formatDateLong(form.date)} :
+            </p>
+            <ul className="mt-1.5 space-y-0.5 text-xs text-amber-700 dark:text-amber-400">
+              {overlaps.map((o) => (
+                <li key={o.id}>
+                  • {o.debut}–{o.fin}
+                  {o.debut2 && o.fin2 ? ` + ${o.debut2}–${o.fin2}` : ""}
+                  {o.employeur ? ` · ${o.employeur}` : ""} ({o._kind})
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1.5 text-[11px] text-amber-600 dark:text-amber-500">
+              Tu peux quand même enregistrer si c'est voulu.
+            </p>
+          </div>
         )}
 
         <div className="mt-3">
