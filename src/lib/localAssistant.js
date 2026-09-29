@@ -91,8 +91,38 @@ const TYPES_LIST = [
   { id: "coupe", sing: "coupé", plur: "coupés" },
 ];
 
-function countType(entries, id) {
-  return entries.filter((e) => e.type === id).length;
+// Classe UN jour (toutes ses saisies) en un seul type, selon sa composition
+// réelle : un matin ne compte comme « matin » que si le jour n'a NI aprem NI
+// soir ; s'il y a au moins deux demi-journées (ex. matin + soir), c'est une
+// « journée complète ». Un « coupé » ou une « journée complète » saisis tels
+// quels gardent leur type.
+function classifyDay(dayEntries) {
+  const types = new Set(dayEntries.map((e) => e.type));
+  if (types.has("coupe")) return "coupe";
+  if (types.has("journee_complete")) return "journee_complete";
+  const slots = [];
+  if (types.has("matin")) slots.push("matin");
+  if (types.has("journee")) slots.push("journee"); // aprem
+  if (types.has("soir")) slots.push("soir");
+  if (slots.length >= 2) return "journee_complete"; // matin + aprem/soir, etc.
+  if (slots.length === 1) return slots[0];
+  return null;
+}
+
+// Compte les jours par type réel (un jour = un seul type, cf. classifyDay).
+function dayTypeCounts(entries) {
+  const byDate = new Map();
+  for (const e of entries) {
+    const arr = byDate.get(e.date) || [];
+    arr.push(e);
+    byDate.set(e.date, arr);
+  }
+  const counts = { matin: 0, journee: 0, soir: 0, journee_complete: 0, coupe: 0 };
+  for (const [, dayEntries] of byDate) {
+    const t = classifyDay(dayEntries);
+    if (t && counts[t] !== undefined) counts[t] += 1;
+  }
+  return counts;
 }
 
 // Quels types de service la question vise-t-elle ? (qn est déjà sans accents)
@@ -108,8 +138,9 @@ function typesVises(qn) {
 
 function reponseTypes(scope, entries, which) {
   if (entries.length === 0) return `Aucune journée enregistrée ${scope.label}.`;
+  const counts = dayTypeCounts(entries);
   const fmt = (t) => {
-    const n = countType(entries, t.id);
+    const n = counts[t.id] || 0;
     return `${n} ${n > 1 ? t.plur : t.sing}`;
   };
   if (which === "all") {
