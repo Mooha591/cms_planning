@@ -26,7 +26,7 @@ import {
   formatHours,
   todayISO,
 } from "../lib/time";
-import { EMPLOYEURS, POSTES, SECTEURS } from "../lib/constants";
+import { CMS_BY_SECTEUR, EMPLOYEURS, POSTES, SECTEURS } from "../lib/constants";
 
 const emptyForm = {
   date: todayISO(),
@@ -264,10 +264,11 @@ export default function EntryFormPage() {
     }
     return map;
   }, [entries]);
-  const cmsOptions = useMemo(
-    () => [...(cmsBySecteur[form.secteur] || [])].sort((a, b) => a.localeCompare(b, "fr")),
-    [cmsBySecteur, form.secteur],
-  );
+  const cmsOptions = useMemo(() => {
+    const officiels = CMS_BY_SECTEUR[form.secteur] || [];
+    const historique = [...(cmsBySecteur[form.secteur] || [])];
+    return [...new Set([...officiels, ...historique])].sort((a, b) => a.localeCompare(b, "fr"));
+  }, [cmsBySecteur, form.secteur]);
 
   function setField(k, v) {
     setForm((f) => ({ ...f, [k]: v }));

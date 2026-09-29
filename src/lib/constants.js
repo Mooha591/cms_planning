@@ -5,7 +5,50 @@ export const STORAGE_KEY = "crs:tournees";
 export const PAUSE_CHIPS = [0, 30, 45, 60, 90];
 
 // Secteurs auxquels une journée/mission peut être rattachée
-export const SECTEURS = ["La Côte", "APREMADOL", "APROMAD", "ABSMAD", "Autre"];
+export const SECTEURS = ["La Côte", "APREMADOL", "APROMAD", "ASPMAD", "ABSMAD", "Autre"];
+
+// CMS officiels par secteur (fournis par l'utilisateur). Affichés dans une
+// liste déroulante. « Autre » et les secteurs absents d'ici → saisie libre,
+// et les CMS déjà saisis dans l'historique s'ajoutent automatiquement.
+export const CMS_BY_SECTEUR = {
+  "La Côte": [
+    "CMS d'Aubonne",
+    "CMS de Gland Région",
+    "CMS de Gland Ville",
+    "CMS de Morges-Est",
+    "CMS de Morges-Ouest",
+    "CMS de Nyon",
+    "CMS de Rolle",
+    "CMS de Saint-Prex",
+    "CMS de Terre-Sainte",
+  ],
+  APREMADOL: [
+    "CMS de Bussigny et Villars-Ste-Croix",
+    "CMS d'Ecublens, Saint-Sulpice et Chavannes-près-Renens",
+    "CMS de Renens Nord-Crissier",
+    "CMS Renens Sud",
+  ],
+  APROMAD: [
+    "CMS de Cully",
+    "CMS d'Echallens",
+    "CMS d'Epalinges",
+    "CMS du Mont",
+    "CMS d'Oron",
+    "CMS de Prilly Nord",
+    "CMS de Prilly Sud",
+    "CMS de Pully",
+  ],
+  ASPMAD: [
+    "CMS Cossonay",
+    "CMS Grandson",
+    "CMS La Vallée",
+    "CMS Orbe",
+    "CMS Sainte-Croix",
+    "CMS Vallorbe",
+    "CMS Yverdon",
+    "CMS Yvonand",
+  ],
+};
 
 // Type de poste / structure où la journée est effectuée
 export const POSTES = ["CMS", "Garde 1:1", "EMS", "EPSM", "Autre"];
