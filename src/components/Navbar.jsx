@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { LogOut, Moon, Settings, Sun } from "lucide-react";
+import { LogOut, Moon, Settings, Sparkles, Sun } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import Logo from "./Logo";
@@ -19,6 +19,13 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-1">
+          <Link
+            to="/assistant"
+            className="rounded-lg p-1.5 text-teal-100 transition hover:bg-white/10"
+            aria-label="Assistant"
+          >
+            <Sparkles size={18} />
+          </Link>
           <button
             onClick={toggleTheme}
             className="rounded-lg p-1.5 text-teal-100 transition hover:bg-white/10"

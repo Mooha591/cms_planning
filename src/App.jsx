@@ -24,6 +24,7 @@ const PlanningFormPage = lazy(() => import("./pages/PlanningFormPage"));
 const HistoriquePage = lazy(() => import("./pages/HistoriquePage"));
 const ChillPage = lazy(() => import("./pages/ChillPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const AssistantPage = lazy(() => import("./pages/AssistantPage"));
 
 function LoadingScreen() {
   return (
@@ -87,6 +88,7 @@ function AuthGate() {
               <Route path="/planning/modifier/:id" element={<PlanningFormPage />} />
               <Route path="/historique" element={<HistoriquePage />} />
               <Route path="/chill" element={<ChillPage />} />
+              <Route path="/assistant" element={<AssistantPage />} />
               <Route path="/reglages" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
