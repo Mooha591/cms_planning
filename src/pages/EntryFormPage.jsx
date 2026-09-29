@@ -267,7 +267,9 @@ export default function EntryFormPage() {
   const cmsOptions = useMemo(() => {
     const officiels = CMS_BY_SECTEUR[form.secteur] || [];
     const historique = [...(cmsBySecteur[form.secteur] || [])];
-    return [...new Set([...officiels, ...historique])].sort((a, b) => a.localeCompare(b, "fr"));
+    return [...new Set([...officiels, ...historique])]
+      .filter((c) => /^cms/i.test(c.trim())) // seulement les vrais CMS
+      .sort((a, b) => a.localeCompare(b, "fr"));
   }, [cmsBySecteur, form.secteur]);
 
   function setField(k, v) {
