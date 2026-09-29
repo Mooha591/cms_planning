@@ -19,11 +19,23 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
 
-const GEMINI_MODEL = "gemini-3.8-flash";
+// Liste de modèles par ordre de préférence. Le tout dernier modèle
+// (3.x) est le plus demandé, donc souvent saturé (503) sur le tier gratuit :
+// on privilégie des modèles 2.5, moins sollicités et amplement suffisants
+// pour lire des chiffres déjà calculés et répondre — et plus rapides. Si un
+// modèle est saturé ou indisponible, on passe automatiquement au suivant.
+const GEMINI_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-flash-latest",
+];
+
 // streamGenerateContent + alt=sse : Gemini renvoie la réponse par morceaux
 // (au lieu d'attendre le texte complet), qu'on relaie au navigateur pour un
 // affichage progressif « mot à mot ».
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse`;
+function geminiUrl(model: string) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
+}
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -104,40 +116,42 @@ Deno.serve(async (req: Request) => {
       generationConfig: { temperature: 0.3, maxOutputTokens: 800 },
     });
 
-    // Le tier gratuit renvoie parfois un 503 « modèle très demandé » passager,
-    // ou un 500 : on réessaie quelques fois avec une courte attente avant
-    // d'abandonner, pour éviter de montrer une erreur pour un simple pic.
+    // On essaie chaque modèle dans l'ordre : dès qu'un répond, on l'utilise.
+    // Si un modèle est saturé (503), surchargé (500), indisponible (404) ou
+    // en limite de quota (429), on tente le suivant. On s'arrête net sur une
+    // erreur de clé (401/403) ou de requête (400) : changer de modèle n'y
+    // changerait rien.
     let geminiRes: Response | null = null;
-    const MAX_ATTEMPTS = 3;
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      geminiRes = await fetch(GEMINI_URL, {
+    let lastStatus = 0;
+    let lastDetail = "";
+    for (const model of GEMINI_MODELS) {
+      const res = await fetch(geminiUrl(model), {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
         body: requestBody,
       });
-      if (geminiRes.ok && geminiRes.body) break;
-      const retryable = geminiRes.status === 503 || geminiRes.status === 500;
-      if (retryable && attempt < MAX_ATTEMPTS) {
-        await new Promise((r) => setTimeout(r, 600 * attempt));
-        continue;
+      if (res.ok && res.body) {
+        geminiRes = res;
+        break;
       }
-      break;
+      lastStatus = res.status;
+      lastDetail = res.body ? await res.text() : "";
+      if (res.status === 400 || res.status === 401 || res.status === 403) break;
+      // sinon (404/429/500/503) : on tente le modèle suivant
     }
 
-    if (!geminiRes || !geminiRes.ok || !geminiRes.body) {
-      const detail = geminiRes?.body ? await geminiRes.text() : "";
-      const status = geminiRes?.status ?? 0;
-      // 429 = quota du tier gratuit atteint ; 503 = modèle momentanément surchargé.
-      if (status === 429) {
+    if (!geminiRes || !geminiRes.body) {
+      // 429 = quota du tier gratuit atteint ; 503 = modèles momentanément saturés.
+      if (lastStatus === 429) {
         return json({ error: "Trop de questions d'un coup — réessaie dans une minute." }, 429);
       }
-      if (status === 503) {
+      if (lastStatus === 503) {
         return json(
-          { error: "Le modèle IA est très demandé là tout de suite — réessaie dans quelques secondes.", detail },
+          { error: "Les modèles IA gratuits sont très demandés là — réessaie dans un instant.", detail: lastDetail },
           503,
         );
       }
-      return json({ error: `Erreur de l'assistant (${status}).`, detail }, 502);
+      return json({ error: `Erreur de l'assistant (${lastStatus}).`, detail: lastDetail }, 502);
     }
 
     // Relaie le flux SSE de Gemini au navigateur en texte brut : on extrait
