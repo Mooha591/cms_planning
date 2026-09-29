@@ -7,6 +7,25 @@ export const PAUSE_CHIPS = [0, 30, 45, 60, 90];
 // Secteurs auxquels une journée/mission peut être rattachée
 export const SECTEURS = ["La Côte", "APREMADOL", "APROMAD", "ABSMAD", "Autre"];
 
+// CMS proposés par secteur (canton de Vaud) : permet de choisir le CMS dans
+// une liste plutôt que de le taper. Listes indicatives, à compléter au besoin.
+// « Autre » n'a pas de liste : saisie libre.
+export const CMS_BY_SECTEUR = {
+  "La Côte": [
+    "Nyon", "Gland", "Rolle", "Aubonne", "Morges", "Gimel", "Begnins",
+    "Coppet", "Saint-Prex", "Cossonay",
+  ],
+  APREMADOL: [
+    "Renens", "Bussigny", "Prilly", "Crissier", "Écublens",
+    "Chavannes-près-Renens", "Saint-Sulpice", "Villars-Sainte-Croix",
+  ],
+  APROMAD: [
+    "Pully", "Lutry", "Cully", "Oron", "Savigny", "Épalinges",
+    "Belmont-sur-Lausanne", "Paudex",
+  ],
+  ABSMAD: ["Payerne", "Avenches", "Moudon", "Lucens"],
+};
+
 // Type de poste / structure où la journée est effectuée
 export const POSTES = ["CMS", "Garde 1:1", "EMS", "EPSM", "Autre"];
 

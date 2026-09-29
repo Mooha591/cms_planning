@@ -26,7 +26,7 @@ import {
   formatHours,
   todayISO,
 } from "../lib/time";
-import { EMPLOYEURS, POSTES, SECTEURS } from "../lib/constants";
+import { CMS_BY_SECTEUR, EMPLOYEURS, POSTES, SECTEURS } from "../lib/constants";
 
 const emptyForm = {
   date: todayISO(),
@@ -143,6 +143,16 @@ export default function EntryFormPage() {
   const [autreEmployeur, setAutreEmployeur] = useState(
     () => !!form.employeur && !EMPLOYEURS.includes(form.employeur),
   );
+  // "Autre…" pour le CMS : le CMS saisi n'est pas dans la liste du secteur
+  const [autreCms, setAutreCms] = useState(
+    () => !!form.cms && !(CMS_BY_SECTEUR[form.secteur] || []).includes(form.cms),
+  );
+
+  // Changer de secteur remet à zéro le CMS (il dépend du secteur choisi).
+  function handleSecteurChange(v) {
+    setForm((f) => ({ ...f, secteur: v, cms: "" }));
+    setAutreCms(false);
+  }
 
   const isCoupe = form.type === "coupe";
   const isJournee = form.type === "journee_complete";
@@ -243,6 +253,9 @@ export default function EntryFormPage() {
     EPSM: { label: "Nom de l'EPSM", ph: "ex : EPSM du Lac" },
     Autre: { label: "Lieu", ph: "ex : hôpital, domicile…" },
   }[form.poste] || { label: "Lieu", ph: "" };
+
+  // CMS proposés pour le secteur choisi (liste déroulante). Vide → saisie libre.
+  const cmsOptions = CMS_BY_SECTEUR[form.secteur] || [];
 
   function setField(k, v) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -471,7 +484,7 @@ export default function EntryFormPage() {
           <Field label="Secteur">
             <select
               value={form.secteur}
-              onChange={(e) => setField("secteur", e.target.value)}
+              onChange={(e) => handleSecteurChange(e.target.value)}
               className="input"
             >
               <option value="" disabled>
@@ -485,14 +498,52 @@ export default function EntryFormPage() {
             </select>
           </Field>
           <Field label={lieu.label} full>
-            <input
-              type="text"
-              list="cms-list"
-              placeholder={lieu.ph}
-              value={form.cms}
-              onChange={(e) => setField("cms", e.target.value)}
-              className="input"
-            />
+            {cmsOptions.length > 0 ? (
+              <>
+                <select
+                  value={autreCms ? "__autre" : form.cms}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "__autre") {
+                      setAutreCms(true);
+                      setField("cms", "");
+                    } else {
+                      setAutreCms(false);
+                      setField("cms", v);
+                    }
+                  }}
+                  className="input"
+                >
+                  <option value="">Non précisé</option>
+                  {cmsOptions.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                  <option value="__autre">Autre…</option>
+                </select>
+                {autreCms && (
+                  <input
+                    type="text"
+                    autoFocus
+                    list="cms-list"
+                    placeholder={lieu.ph}
+                    value={form.cms}
+                    onChange={(e) => setField("cms", e.target.value)}
+                    className="input mt-2"
+                  />
+                )}
+              </>
+            ) : (
+              <input
+                type="text"
+                list="cms-list"
+                placeholder={lieu.ph}
+                value={form.cms}
+                onChange={(e) => setField("cms", e.target.value)}
+                className="input"
+              />
+            )}
             <datalist id="cms-list">
               {cmsSuggestions.map((c) => (
                 <option key={c} value={c} />
