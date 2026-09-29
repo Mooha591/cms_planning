@@ -265,10 +265,14 @@ export default function EntryFormPage() {
     return map;
   }, [entries]);
   const cmsOptions = useMemo(() => {
-    const officiels = CMS_BY_SECTEUR[form.secteur] || [];
-    const historique = [...(cmsBySecteur[form.secteur] || [])];
-    return [...new Set([...officiels, ...historique])]
-      .filter((c) => /^cms/i.test(c.trim())) // seulement les vrais CMS
+    const officiels = CMS_BY_SECTEUR[form.secteur];
+    // Secteur avec liste officielle : on ne montre QUE cette liste (pas de
+    // doublons issus des anciennes saisies). Sinon on propose l'historique.
+    if (officiels && officiels.length > 0) {
+      return [...officiels].sort((a, b) => a.localeCompare(b, "fr"));
+    }
+    return [...(cmsBySecteur[form.secteur] || [])]
+      .filter((c) => /^cms/i.test(c.trim()))
       .sort((a, b) => a.localeCompare(b, "fr"));
   }, [cmsBySecteur, form.secteur]);
 
