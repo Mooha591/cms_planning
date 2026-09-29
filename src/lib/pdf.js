@@ -2,6 +2,7 @@ import { typeMeta } from "./constants";
 import { budgetTypeMeta } from "./budgetConstants";
 import { computeMinutes, countUniqueDays, formatDateShort, formatHours } from "./time";
 import { computeSalary } from "./salary";
+import { computeCommute, readDistances } from "./commute";
 
 const TEAL = [15, 118, 110]; // teal-700, couleur de marque
 
@@ -239,12 +240,39 @@ export async function exportYearPDF({ year, entries = [], transactions = [] }) {
     });
   }
 
+  // Trajets domicile ↔ CMS (km déductibles) — seulement les CMS avec une
+  // distance renseignée
+  const { perCms, totalKm } = computeCommute(yearEntries, readDistances());
+  const commuteRows = perCms
+    .filter((r) => r.oneWay > 0)
+    .map((r) => [
+      r.cms,
+      String(r.jours),
+      `${r.oneWay.toLocaleString("fr-FR")} km`,
+      `${r.kmTotal.toLocaleString("fr-FR")} km`,
+    ]);
+  const hasCommute = commuteRows.length > 0;
+  if (hasCommute) {
+    autoTable(doc, {
+      startY: (doc.lastAutoTable?.finalY ?? 40) + 8,
+      head: [["Trajet domicile ↔ CMS", "Jours", "Aller", "Total A/R"]],
+      body: commuteRows,
+      foot: [["TOTAL km domicile ↔ CMS", "", "", `${totalKm.toLocaleString("fr-FR")} km`]],
+      styles: { fontSize: 9, cellPadding: 2.5 },
+      headStyles: { fillColor: TEAL, textColor: 255 },
+      footStyles: { fillColor: [240, 253, 250], textColor: TEAL, fontStyle: "bold" },
+    });
+  }
+
   const finalY = doc.lastAutoTable?.finalY ?? 40;
   doc.setFontSize(8);
   doc.setTextColor(150);
   const notes = [];
   if (anyRate) {
     notes.push("Les montants brut/net sont une ESTIMATION basée sur les taux que tu as saisis — pas des chiffres officiels.");
+  }
+  if (hasCommute) {
+    notes.push("Km domicile ↔ CMS : total indicatif (1 aller-retour par jour travaillé). Applique ton propre barème kilométrique.");
   }
   notes.push(`Document récapitulatif pour tes archives — généré le ${new Date().toLocaleDateString("fr-FR")} avec KyzenDay.`);
   doc.text(notes, 14, finalY + 8);

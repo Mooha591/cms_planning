@@ -18,6 +18,7 @@ import EmployeurBreakdown from "../components/EmployeurBreakdown";
 import SalaryEstimate from "../components/SalaryEstimate";
 import KmEstimate from "../components/KmEstimate";
 import YearHeatmap from "../components/YearHeatmap";
+import CmsDistances from "../components/CmsDistances";
 import { computeMinutes, countUniqueDays, formatHours } from "../lib/time";
 import { exportEntriesCSV } from "../lib/csv";
 import { exportYearPDF } from "../lib/pdf";
@@ -238,6 +239,7 @@ export default function HistoriquePage() {
           <EmployeurBreakdown entries={yearEntries} />
           <SalaryEstimate heures={stats.minutes / 60} />
           <KmEstimate km={stats.km} />
+          <CmsDistances entries={yearEntries} />
         </>
       )}
     </div>
