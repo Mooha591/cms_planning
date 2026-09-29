@@ -6,6 +6,9 @@ import { usePlanning } from "../context/PlanningContext";
 import { supabase } from "../lib/supabaseClient";
 import { buildAssistantContext } from "../lib/assistantContext";
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
 const SUGGESTIONS = [
   "Combien d'heures ai-je travaillé ce mois-ci ?",
   "Fais-moi le résumé de mon mois.",
@@ -44,27 +47,51 @@ export default function AssistantPage() {
     const history = messages.map((m) => ({ role: m.role, text: m.text }));
     setMessages((prev) => [...prev, { role: "user", text: q }]);
     setLoading(true);
+    // Une bulle assistant est-elle déjà affichée ? (dès le 1er morceau reçu)
+    let started = false;
     try {
       const context = buildAssistantContext(contextSource);
-      const { data, error: fnError } = await supabase.functions.invoke("assistant", {
-        body: { question: q, context, history },
+      // On appelle la fonction directement (pas via functions.invoke, qui
+      // attend la réponse complète) pour pouvoir lire le flux au fur et à mesure.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token ?? "";
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/assistant`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          apikey: SUPABASE_ANON,
+        },
+        body: JSON.stringify({ question: q, context, history }),
       });
-      if (fnError) {
-        // Supabase renvoie un message générique ("non-2xx status") : on lit
-        // le vrai message d'erreur renvoyé par la fonction (ex : clé Gemini
-        // manquante, quota atteint…) dans le corps de la réponse.
-        let msg = fnError.message;
+
+      if (!res.ok) {
+        let msg = `Erreur de l'assistant (${res.status}).`;
         try {
-          const body = await fnError.context?.json?.();
+          const body = await res.json();
           if (body?.error) msg = body.error;
-          if (body?.detail) msg += ` — ${typeof body.detail === "string" ? body.detail.slice(0, 300) : ""}`;
         } catch {
           // corps illisible : on garde le message générique
         }
         throw new Error(msg);
       }
-      if (data?.error) throw new Error(data.error);
-      setMessages((prev) => [...prev, { role: "assistant", text: data.answer }]);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let acc = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acc += decoder.decode(value, { stream: true });
+        if (!started) {
+          started = true;
+          setLoading(false);
+          setMessages((prev) => [...prev, { role: "assistant", text: acc }]);
+        } else {
+          setMessages((prev) => [...prev.slice(0, -1), { role: "assistant", text: acc }]);
+        }
+      }
+      if (!acc.trim()) throw new Error("L'assistant n'a pas su répondre, reformule ta question.");
     } catch (err) {
       setError(err.message || "L'assistant est indisponible, réessaie.");
     } finally {

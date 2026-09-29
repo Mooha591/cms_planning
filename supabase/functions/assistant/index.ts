@@ -20,7 +20,10 @@ const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
 
 const GEMINI_MODEL = "gemini-3.8-flash";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+// streamGenerateContent + alt=sse : Gemini renvoie la réponse par morceaux
+// (au lieu d'attendre le texte complet), qu'on relaie au navigateur pour un
+// affichage progressif « mot à mot ».
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse`;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -105,8 +108,8 @@ Deno.serve(async (req: Request) => {
       }),
     });
 
-    if (!geminiRes.ok) {
-      const detail = await geminiRes.text();
+    if (!geminiRes.ok || !geminiRes.body) {
+      const detail = geminiRes.body ? await geminiRes.text() : "";
       // 429 = quota du tier gratuit atteint (rare, mais on le dit clairement).
       if (geminiRes.status === 429) {
         return json({ error: "Trop de questions d'un coup — réessaie dans une minute." }, 429);
@@ -114,11 +117,48 @@ Deno.serve(async (req: Request) => {
       return json({ error: `Erreur de l'assistant (${geminiRes.status}).`, detail }, 502);
     }
 
-    const data = await geminiRes.json();
-    const answer = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text).join("") ?? "";
-    if (!answer) return json({ error: "L'assistant n'a pas su répondre, reformule ta question." }, 502);
+    // Relaie le flux SSE de Gemini au navigateur en texte brut : on extrait
+    // seulement le texte de chaque morceau, morceau par morceau.
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = geminiRes.body!.getReader();
+        const decoder = new TextDecoder();
+        const encoder = new TextEncoder();
+        let buffer = "";
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed.startsWith("data:")) continue;
+              const payload = trimmed.slice(5).trim();
+              if (!payload || payload === "[DONE]") continue;
+              try {
+                const j = JSON.parse(payload);
+                const text = j?.candidates?.[0]?.content?.parts
+                  ?.map((p: { text?: string }) => p.text ?? "")
+                  .join("") ?? "";
+                if (text) controller.enqueue(encoder.encode(text));
+              } catch {
+                // morceau JSON incomplet : ignoré (le suivant complètera)
+              }
+            }
+          }
+        } catch {
+          // flux interrompu : on ferme proprement, le client garde ce qu'il a reçu
+        } finally {
+          controller.close();
+        }
+      },
+    });
 
-    return json({ answer });
+    return new Response(stream, {
+      headers: { ...CORS_HEADERS, "Content-Type": "text/plain; charset=utf-8" },
+    });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Erreur serveur." }, 500);
   }
