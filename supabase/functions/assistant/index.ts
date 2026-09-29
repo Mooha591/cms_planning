@@ -19,22 +19,23 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
 
-// Liste de modèles par ordre de préférence. Le tout dernier modèle
-// (3.x) est le plus demandé, donc souvent saturé (503) sur le tier gratuit :
-// on privilégie des modèles 2.5, moins sollicités et amplement suffisants
-// pour lire des chiffres déjà calculés et répondre — et plus rapides. Si un
-// modèle est saturé ou indisponible, on passe automatiquement au suivant.
+// Liste de modèles par ordre de préférence. On met le modèle « lite » en
+// premier : c'est le plus rapide et le moins sollicité (donc le moins
+// souvent saturé), et il suffit largement pour lire des chiffres déjà
+// calculés et répondre. Si un modèle est saturé/indisponible, on bascule
+// automatiquement sur le suivant.
 const GEMINI_MODELS = [
-  "gemini-2.5-flash",
   "gemini-2.5-flash-lite",
+  "gemini-2.5-flash",
   "gemini-flash-latest",
 ];
 
-// streamGenerateContent + alt=sse : Gemini renvoie la réponse par morceaux
-// (au lieu d'attendre le texte complet), qu'on relaie au navigateur pour un
-// affichage progressif « mot à mot ».
+// generateContent (réponse complète, sans streaming) : le mode « flux » du
+// tier gratuit est très bridé et renvoie des 503 en boucle ; le mode normal
+// a bien plus de capacité. On perd l'affichage mot à mot mais l'assistant
+// répond de façon fiable (et le modèle « lite » est rapide).
 function geminiUrl(model: string) {
-  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 }
 
 const CORS_HEADERS = {
@@ -116,31 +117,44 @@ Deno.serve(async (req: Request) => {
       generationConfig: { temperature: 0.3, maxOutputTokens: 800 },
     });
 
-    // On essaie chaque modèle dans l'ordre : dès qu'un répond, on l'utilise.
-    // Si un modèle est saturé (503), surchargé (500), indisponible (404) ou
-    // en limite de quota (429), on tente le suivant. On s'arrête net sur une
-    // erreur de clé (401/403) ou de requête (400) : changer de modèle n'y
-    // changerait rien.
-    let geminiRes: Response | null = null;
+    // On essaie chaque modèle dans l'ordre, avec un réessai en cas de 503/500
+    // passager (« modèle très demandé »). Dès qu'un modèle répond, on prend sa
+    // réponse. On s'arrête net sur une erreur de clé (401/403) ou de requête
+    // (400) : changer de modèle n'y changerait rien.
+    let answer = "";
     let lastStatus = 0;
     let lastDetail = "";
+    outer:
     for (const model of GEMINI_MODELS) {
-      const res = await fetch(geminiUrl(model), {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
-        body: requestBody,
-      });
-      if (res.ok && res.body) {
-        geminiRes = res;
-        break;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const res = await fetch(geminiUrl(model), {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+          body: requestBody,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          answer = data?.candidates?.[0]?.content?.parts
+            ?.map((p: { text?: string }) => p.text ?? "")
+            .join("") ?? "";
+          if (answer.trim()) break outer;
+          lastStatus = 200;
+          lastDetail = "réponse vide";
+          break; // modèle suivant
+        }
+        lastStatus = res.status;
+        lastDetail = await res.text();
+        if (res.status === 400 || res.status === 401 || res.status === 403) break outer;
+        const retryable = res.status === 503 || res.status === 500;
+        if (retryable && attempt < 2) {
+          await new Promise((r) => setTimeout(r, 500));
+          continue; // on retente le même modèle une fois
+        }
+        break; // modèle suivant
       }
-      lastStatus = res.status;
-      lastDetail = res.body ? await res.text() : "";
-      if (res.status === 400 || res.status === 401 || res.status === 403) break;
-      // sinon (404/429/500/503) : on tente le modèle suivant
     }
 
-    if (!geminiRes || !geminiRes.body) {
+    if (!answer.trim()) {
       // 429 = quota du tier gratuit atteint ; 503 = modèles momentanément saturés.
       if (lastStatus === 429) {
         return json({ error: "Trop de questions d'un coup — réessaie dans une minute." }, 429);
@@ -154,46 +168,8 @@ Deno.serve(async (req: Request) => {
       return json({ error: `Erreur de l'assistant (${lastStatus}).`, detail: lastDetail }, 502);
     }
 
-    // Relaie le flux SSE de Gemini au navigateur en texte brut : on extrait
-    // seulement le texte de chaque morceau, morceau par morceau.
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = geminiRes.body!.getReader();
-        const decoder = new TextDecoder();
-        const encoder = new TextEncoder();
-        let buffer = "";
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() ?? "";
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed.startsWith("data:")) continue;
-              const payload = trimmed.slice(5).trim();
-              if (!payload || payload === "[DONE]") continue;
-              try {
-                const j = JSON.parse(payload);
-                const text = j?.candidates?.[0]?.content?.parts
-                  ?.map((p: { text?: string }) => p.text ?? "")
-                  .join("") ?? "";
-                if (text) controller.enqueue(encoder.encode(text));
-              } catch {
-                // morceau JSON incomplet : ignoré (le suivant complètera)
-              }
-            }
-          }
-        } catch {
-          // flux interrompu : on ferme proprement, le client garde ce qu'il a reçu
-        } finally {
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, {
+    // Réponse complète renvoyée en texte brut (le client l'affiche telle quelle).
+    return new Response(answer, {
       headers: { ...CORS_HEADERS, "Content-Type": "text/plain; charset=utf-8" },
     });
   } catch (e) {
