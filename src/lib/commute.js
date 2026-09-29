@@ -14,9 +14,16 @@ const DISTANCES_KEY = "kyzenday:distance-cms";
 // le nom du CMS (insensible à la casse/aux accents, « CMS Renens » ou
 // « renens » fonctionnent). L'utilisateur peut toujours corriger.
 const KNOWN_DISTANCES = [
+  // APREMADOL (Ouest lausannois)
   { match: "renens", km: 49 },
   { match: "bussigny", km: 48 },
   { match: "prilly", km: 50 },
+  // La Côte — « gland ville » / « gland region » avant tout « gland » générique
+  { match: "gland ville", km: 19 },
+  { match: "gland region", km: 20 },
+  { match: "morges", km: 39 },
+  { match: "nyon", km: 15 },
+  { match: "rolle", km: 26 },
 ];
 
 function normCms(s) {
