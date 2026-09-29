@@ -109,16 +109,40 @@ export async function exportMonthPDF({ entries, totals, monthLabel, monthKey }) 
     },
   });
 
+  // Trajets domicile ↔ CMS du mois (km déductibles) — distances connues
+  // pré-remplies automatiquement.
+  const { perCms, totalKm } = computeCommute(entries, readDistances());
+  const commuteRows = perCms
+    .filter((r) => r.oneWay > 0)
+    .map((r) => [
+      r.cms,
+      String(r.jours),
+      `${r.oneWay.toLocaleString("fr-FR")} km`,
+      `${r.kmTotal.toLocaleString("fr-FR")} km`,
+    ]);
+  const hasCommute = commuteRows.length > 0;
+  if (hasCommute) {
+    autoTable(doc, {
+      startY: (doc.lastAutoTable?.finalY ?? 34) + 8,
+      head: [["Trajet domicile ↔ CMS", "Jours", "Aller", "Total A/R"]],
+      body: commuteRows,
+      foot: [["TOTAL km domicile ↔ CMS", "", "", `${totalKm.toLocaleString("fr-FR")} km`]],
+      styles: { fontSize: 8, cellPadding: 2.5 },
+      headStyles: { fillColor: TEAL, textColor: 255 },
+      footStyles: { fillColor: [240, 253, 250], textColor: TEAL, fontStyle: "bold" },
+    });
+  }
+
   const finalY = doc.lastAutoTable?.finalY ?? 34;
   doc.setFontSize(9);
   doc.setTextColor(150);
-  doc.text(
-    `${totals.jours} journée${totals.jours > 1 ? "s" : ""} enregistrée${
-      totals.jours > 1 ? "s" : ""
-    } · généré le ${new Date().toLocaleDateString("fr-FR")} avec KyzenDay`,
-    14,
-    finalY + 10,
-  );
+  const notes = [
+    `${totals.jours} journée${totals.jours > 1 ? "s" : ""} enregistrée${totals.jours > 1 ? "s" : ""} · généré le ${new Date().toLocaleDateString("fr-FR")} avec KyzenDay`,
+  ];
+  if (hasCommute) {
+    notes.push("Km domicile ↔ CMS : total indicatif (1 aller-retour par jour). Applique ton propre barème.");
+  }
+  doc.text(notes, 14, finalY + 10);
 
   doc.save(`kyzenday-releve-${monthKey}.pdf`);
 }
