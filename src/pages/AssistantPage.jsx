@@ -49,7 +49,20 @@ export default function AssistantPage() {
       const { data, error: fnError } = await supabase.functions.invoke("assistant", {
         body: { question: q, context, history },
       });
-      if (fnError) throw fnError;
+      if (fnError) {
+        // Supabase renvoie un message générique ("non-2xx status") : on lit
+        // le vrai message d'erreur renvoyé par la fonction (ex : clé Gemini
+        // manquante, quota atteint…) dans le corps de la réponse.
+        let msg = fnError.message;
+        try {
+          const body = await fnError.context?.json?.();
+          if (body?.error) msg = body.error;
+          if (body?.detail) msg += ` — ${typeof body.detail === "string" ? body.detail.slice(0, 300) : ""}`;
+        } catch {
+          // corps illisible : on garde le message générique
+        }
+        throw new Error(msg);
+      }
       if (data?.error) throw new Error(data.error);
       setMessages((prev) => [...prev, { role: "assistant", text: data.answer }]);
     } catch (err) {
