@@ -6,18 +6,21 @@ import {
   KeyRound,
   Settings as SettingsIcon,
   Trash2,
+  Type,
   User,
   Wifi,
   WifiOff,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../lib/supabaseClient";
 import Field from "../components/Field";
 
-// Page Réglages & compte : profil, sécurité, synchronisation, suppression
-// du compte.
+// Page Réglages & compte : profil, sécurité, affichage, synchronisation,
+// suppression du compte.
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
+  const { textSize, setTextSize, textSizes } = useTheme();
   const navigate = useNavigate();
 
   const [online, setOnline] = useState(navigator.onLine);
@@ -151,6 +154,32 @@ export default function SettingsPage() {
             ? "En ligne — tes changements sont synchronisés avec Supabase."
             : "Hors ligne — reconnecte-toi pour synchroniser tes changements."}
         </div>
+      </section>
+
+      {/* Affichage */}
+      <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <Type size={14} /> Taille du texte
+        </h2>
+        <div className="grid grid-cols-4 gap-2">
+          {textSizes.map((size) => (
+            <button
+              key={size}
+              type="button"
+              onClick={() => setTextSize(size)}
+              className={`rounded-xl border px-2 py-2.5 text-center text-sm font-medium capitalize transition ${
+                textSize === size
+                  ? "border-teal-600 bg-teal-700 text-white dark:border-teal-500 dark:bg-teal-600"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-teal-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+              }`}
+            >
+              {size}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
+          Agrandit tout le texte de l'app pour un meilleur confort de lecture.
+        </p>
       </section>
 
       {/* Profil */}
