@@ -31,7 +31,7 @@ import MonthCalendar from "../components/MonthCalendar";
 import EntryCard from "../components/EntryCard";
 import { computeMinutes, countUniqueDays, formatDateLong, monthKeyOf, todayISO } from "../lib/time";
 import { exportEntriesCSV } from "../lib/csv";
-import { exportMonthPDF } from "../lib/pdf";
+import { exportMonthPDF, exportEmployerPDF } from "../lib/pdf";
 import { applyBackupSettings, exportBackup, parseBackupFile } from "../lib/backup";
 import { loadEntries as loadLocalEntries } from "../lib/storage";
 
@@ -193,6 +193,12 @@ export default function HomePage() {
   }, [monthEntries]);
 
   const selectedEntries = selectedDate ? entriesByDate.get(selectedDate) || [] : [];
+
+  // Employeurs distincts du mois, pour proposer un relevé par agence.
+  const monthEmployers = useMemo(
+    () => [...new Set(monthEntries.map((e) => (e.employeur || "").trim()).filter(Boolean))].sort(),
+    [monthEntries],
+  );
 
   // Totaux du mois — "jours" compte les dates distinctes, pas les lignes
   // (un jour saisi en 2 créneaux séparés ne doit compter qu'une fois).
@@ -359,6 +365,31 @@ export default function HomePage() {
             )}
           </div>
         </div>
+
+        {monthEmployers.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-800 dark:bg-slate-900">
+            <span className="font-medium text-slate-500 dark:text-slate-400">
+              Relevé pour l'agence :
+            </span>
+            {monthEmployers.map((emp) => (
+              <button
+                key={emp}
+                onClick={() =>
+                  exportEmployerPDF({
+                    entries: monthEntries,
+                    employer: emp,
+                    monthLabel,
+                    monthKey,
+                    workerName: displayName,
+                  })
+                }
+                className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-medium text-slate-600 hover:border-teal-400 hover:text-teal-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-teal-500 dark:hover:text-teal-400"
+              >
+                <FileText size={13} /> {emp}
+              </button>
+            ))}
+          </div>
+        )}
 
         {viewMode === "calendrier" && (
           <div className="mb-3">

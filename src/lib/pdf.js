@@ -47,6 +47,84 @@ function totalsByCurrency(transactions) {
   return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 }
 
+// Relevé d'heures mensuel destiné À UNE AGENCE (employeur) : ne contient que
+// les journées faites pour cet employeur, sans infos personnelles (budget,
+// salaire…), avec le nom de l'intervenant·e et une zone de signature. À
+// envoyer à l'agence pour justifier les heures.
+export async function exportEmployerPDF({ entries, employer, monthLabel, monthKey, workerName }) {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+
+  const rows0 = [...entries]
+    .filter((e) => (e.employeur || "") === employer)
+    .sort((a, b) => (a.date > b.date ? 1 : -1));
+
+  const totalHeures = rows0.reduce((a, e) => a + (Number(e.heures) || 0), 0);
+  const totalJours = countUniqueDays(rows0);
+
+  const doc = new jsPDF();
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(...TEAL);
+  doc.text("Relevé d'heures", 14, 18);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(60);
+  const label = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+  doc.text(`Période : ${label}`, 14, 27);
+  doc.text(`Agence / employeur : ${employer || "—"}`, 14, 33);
+  if (workerName) doc.text(`Intervenant·e : ${workerName}`, 14, 39);
+
+  const rows = rows0.map((e) => [
+    formatDateShort(e.date),
+    typeMeta(e.type).label,
+    formatPlage(e),
+    e.secteur || "—",
+    e.cms || "—",
+    formatHours(e.heures),
+  ]);
+
+  autoTable(doc, {
+    startY: workerName ? 45 : 39,
+    head: [["Date", "Type", "Horaires", "Secteur", "Lieu / CMS", "Heures"]],
+    body: rows,
+    foot: [["", "", "", "", "TOTAL", formatHours(totalHeures)]],
+    styles: { fontSize: 9, cellPadding: 2.5 },
+    headStyles: { fillColor: TEAL, textColor: 255 },
+    footStyles: { fillColor: [240, 253, 250], textColor: TEAL, fontStyle: "bold" },
+  });
+
+  let y = (doc.lastAutoTable?.finalY ?? 45) + 10;
+  doc.setFontSize(10);
+  doc.setTextColor(60);
+  doc.text(
+    `${totalJours} jour${totalJours > 1 ? "s" : ""} · ${formatHours(totalHeures)} au total`,
+    14,
+    y,
+  );
+
+  // Zone de signature
+  y += 16;
+  doc.setDrawColor(180);
+  doc.line(14, y, 84, y);
+  doc.line(120, y, 190, y);
+  doc.setFontSize(8);
+  doc.setTextColor(130);
+  doc.text("Signature intervenant·e", 14, y + 5);
+  doc.text("Signature / tampon agence", 120, y + 5);
+
+  doc.text(
+    `Généré le ${new Date().toLocaleDateString("fr-FR")} avec KyzenDay`,
+    14,
+    285,
+  );
+
+  doc.save(`releve-${(employer || "agence").toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${monthKey}.pdf`);
+}
+
 // Construit et télécharge un relevé d'heures mensuel en PDF, mis en page
 // (en-tête, tableau des journées, total). jsPDF (~250 Ko) n'est chargé
 // qu'au moment où l'export est vraiment demandé, pas au chargement de l'app.
