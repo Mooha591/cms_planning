@@ -11,6 +11,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import Navbar from "./components/Navbar";
 import BottomNav from "./components/BottomNav";
 import Logo from "./components/Logo";
+import ErrorBoundary from "./components/ErrorBoundary";
 import LoginPage from "./pages/LoginPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 
@@ -39,16 +40,18 @@ function LoadingScreen() {
 // Définition des routes (pages) de l'application
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <Routes>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <Routes>
           {/* Accessible sans session active : le lien de l'email crée une
               session de récupération temporaire, gérée dans la page elle-même. */}
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/*" element={<AuthGate />} />
-        </Routes>
-      </AuthProvider>
-    </ThemeProvider>
+          </Routes>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

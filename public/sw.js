@@ -1,7 +1,10 @@
 // Service worker minimal : permet l'installation de l'app (PWA) et un
 // accès de base hors-ligne. Ne prend en charge que les requêtes de même
 // origine — les polices Google Fonts etc. passent directement au réseau.
-const CACHE = "kyzenday-shell-v1";
+// Incrémenter à CHAQUE déploiement qui modifie le shell (ci-dessous) ou le SW
+// lui-même : le changement de nom déclenche la purge des anciens caches dans
+// `activate` et force le re-téléchargement de la coquille.
+const CACHE = "kyzenday-shell-v2";
 const SHELL = ["/", "/manifest.webmanifest", "/favicon.svg", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {

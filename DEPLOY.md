@@ -4,13 +4,20 @@ App **Vite + React** (SPA, routing côté client via react-router). Sortie de bu
 
 ## 1. Pré-requis Supabase (une fois)
 
-Dans **Supabase → SQL Editor**, exécute les schémas s'ils ne le sont pas déjà :
+Dans **Supabase → SQL Editor**, exécute les schémas **dans cet ordre** s'ils ne
+le sont pas déjà :
 
-- `supabase/schema.sql` (journées — inclut la colonne `employeur`)
-- `supabase/budget_schema.sql` (budget)
-- `supabase/planning_schema.sql` (onglet Planning)
-- `supabase/agency_logos_schema.sql` (logos des agences)
-- `supabase/p4_schema.sql` (Puissance 4 en ligne)
+1. `supabase/schema.sql` (journées — inclut la colonne `employeur`)
+2. `supabase/budget_schema.sql` (budget)
+3. `supabase/budget_currency_migration.sql` (devise des transactions)
+4. `supabase/note_migration.sql` (champ note)
+5. `supabase/planning_schema.sql` (onglet Planning)
+6. `supabase/agency_logos_schema.sql` (logos des agences)
+7. `supabase/user_settings_schema.sql` (réglages par utilisateur)
+8. `supabase/p4_schema.sql` (Puissance 4 en ligne — optionnel)
+9. `supabase/updated_at_triggers.sql` (mise à jour auto de `updated_at`)
+
+`supabase/blackjack_cleanup.sql` est un nettoyage ponctuel (seulement si besoin).
 
 ## 2. Mettre le projet sous Git
 
