@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Briefcase } from "lucide-react";
 import { countUniqueDays, formatHours } from "../lib/time";
 import { computeSalary } from "../lib/salary";
@@ -10,19 +9,11 @@ const RATES_KEY = "kyzenday:taux-par-employeur";
 const CHARGES_KEY = "kyzenday:taux-charges";
 const DEFAULT_CHARGES = "15";
 
-function readRates() {
+function parseRates(raw) {
   try {
-    return JSON.parse(localStorage.getItem(RATES_KEY) || "{}");
+    return JSON.parse(raw || "{}");
   } catch {
     return {};
-  }
-}
-
-function writeRates(rates) {
-  try {
-    localStorage.setItem(RATES_KEY, JSON.stringify(rates));
-  } catch {
-    // stockage indisponible : les taux ne seront juste pas mémorisés
   }
 }
 
@@ -31,7 +22,11 @@ function writeRates(rates) {
 // permet d'estimer la paie brute/nette de chacune.
 export default function EmployeurBreakdown({ entries }) {
   const { format } = useCurrency();
-  const [rates, setRates] = useState(readRates);
+  // Taux par employeur stockés en JSON et partagés (clé synchronisée) avec
+  // <PaieCheck /> : une modif du taux ici se reflète immédiatement dans le
+  // contrôle de paie, même composant monté en même temps.
+  const [ratesRaw, setRatesRaw] = useSyncedLocalStorage(RATES_KEY, "{}");
+  const rates = parseRates(ratesRaw);
   // Clé partagée avec <SalaryEstimate /> : useSyncedLocalStorage propage
   // immédiatement toute modification du taux de charges entre les deux
   // composants, même montés en même temps sur la même page.
@@ -61,11 +56,7 @@ export default function EmployeurBreakdown({ entries }) {
   const rows = [...byEmployeur.entries()].sort((a, b) => b[1].heures - a[1].heures);
 
   function setRate(employeur, value) {
-    setRates((r) => {
-      const next = { ...r, [employeur]: value };
-      writeRates(next);
-      return next;
-    });
+    setRatesRaw(JSON.stringify({ ...rates, [employeur]: value }));
   }
 
   return (

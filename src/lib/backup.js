@@ -13,6 +13,7 @@ const SETTINGS_KEYS = [
   "kyzenday:taux-par-employeur",
   "kyzenday:taux-km",
   "kyzenday:currency",
+  "kyzenday:paie-recue", // contrôle de paie : bruts reçus par mois/employeur
 ];
 
 function readSettings() {

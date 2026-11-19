@@ -24,6 +24,7 @@ import MonthSummary from "../components/MonthSummary";
 import MonthInsight from "../components/MonthInsight";
 import SecteurBreakdown from "../components/SecteurBreakdown";
 import EmployeurBreakdown from "../components/EmployeurBreakdown";
+import PaieCheck from "../components/PaieCheck";
 import MonthlyTrends from "../components/MonthlyTrends";
 import SalaryEstimate from "../components/SalaryEstimate";
 import KmEstimate from "../components/KmEstimate";
@@ -41,7 +42,7 @@ const HOME_VIEW_KEY = "kyzenday:home-view";
 
 // Page d'accueil : récap du mois + liste des journées
 export default function HomePage() {
-  const { entries, loading, remove, importEntries } = useEntries();
+  const { entries, loading, error, reload, remove, importEntries } = useEntries();
   const { user } = useAuth();
   const displayName = user?.user_metadata?.full_name?.trim();
   const { transactions, importTransactions } = useBudget();
@@ -279,6 +280,20 @@ export default function HomePage() {
         onNext={() => changeMonth(1)}
       />
 
+      {error && (
+        <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/50 dark:bg-rose-950/30">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-rose-800 dark:text-rose-300">
+            <AlertTriangle size={16} /> {error}
+          </p>
+          <button
+            onClick={reload}
+            className="mt-3 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-rose-700"
+          >
+            Réessayer
+          </button>
+        </div>
+      )}
+
       {monthEntries.length > 0 && (
         <section className="mb-6">
           <button
@@ -303,6 +318,7 @@ export default function HomePage() {
               />
               <SecteurBreakdown entries={monthEntries} />
               <EmployeurBreakdown entries={monthEntries} />
+              <PaieCheck entries={monthEntries} monthKey={monthKey} />
               <MonthlyTrends entries={entries} />
               <SalaryEstimate heures={totals.minutes / 60} />
               <KmEstimate km={totals.km} />

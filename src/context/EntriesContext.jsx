@@ -1,8 +1,13 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "./AuthContext";
 
 const EntriesContext = createContext(null);
+
+// Au-delà de ce délai, on cesse d'attendre Supabase et on affiche une erreur
+// avec un bouton « Réessayer », plutôt que de laisser « Chargement… » tourner
+// indéfiniment (ex : projet Supabase en veille, réseau coupé).
+const LOAD_TIMEOUT_MS = 12000;
 
 // Fournit la liste des journées de l'utilisateur connecté + les actions
 // pour les modifier, avec persistance sur Supabase (table "entries",
@@ -13,26 +18,51 @@ export function EntriesProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Chargement initial des journées de l'utilisateur connecté
+  // Incrémenté par reload() pour relancer le chargement (bouton « Réessayer »).
+  const [reloadKey, setReloadKey] = useState(0);
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
+
+  // Chargement des journées de l'utilisateur connecté, avec garde-fou :
+  // si Supabase ne répond pas sous LOAD_TIMEOUT_MS, on sort de l'attente et
+  // on expose une erreur au lieu de rester bloqué sur « Chargement… ».
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
     setLoading(true);
-    supabase
+    setError(null);
+
+    const timeout = new Promise((_, reject) => {
+      setTimeout(
+        () => reject(new Error("Délai dépassé")),
+        LOAD_TIMEOUT_MS,
+      );
+    });
+
+    const query = supabase
       .from("entries")
       .select("*")
       .eq("user_id", user.id)
-      .order("date", { ascending: false })
+      .order("date", { ascending: false });
+
+    Promise.race([query, timeout])
       .then(({ data, error: fetchError }) => {
         if (cancelled) return;
         if (fetchError) setError(fetchError.message);
         else setEntries(data ?? []);
         setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError(
+          "Impossible de charger tes journées. Vérifie ta connexion, puis réessaie.",
+        );
+        setLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, reloadKey]);
 
   // Ajoute une nouvelle journée ou met à jour une journée existante (même id)
   async function upsert(entry) {
@@ -102,7 +132,7 @@ export function EntriesProvider({ children }) {
 
   return (
     <EntriesContext.Provider
-      value={{ entries, loading, error, upsert, remove, getById, importEntries }}
+      value={{ entries, loading, error, reload, upsert, remove, getById, importEntries }}
     >
       {children}
     </EntriesContext.Provider>
